@@ -1,6 +1,7 @@
 package com.mchat.room;
 
 import com.mchat.model.Message;
+import com.mchat.model.MessageType;
 import com.mchat.model.Room;
 import com.mchat.room.dto.request.MessagePaginationRequest;
 import com.mchat.room.dto.request.PaginatedMessagesResponse;
@@ -39,8 +40,24 @@ public class RoomService {
         .failWith(() -> new IllegalArgumentException("Room not found: " + roomId))
         .chain(
             room -> {
-              Message message = new Message(content, sender, room);
+              var determinedType = determineMessageType(content);
+              var message = new Message(content, sender, determinedType, room);
               return message.persist();
             });
+  }
+
+  private MessageType determineMessageType(String content) {
+    if (content == null || content.isBlank()) {
+      return MessageType.TEXT;
+    }
+
+    String lowerContent = content.toLowerCase().trim();
+    if (lowerContent.matches(".*\\.(jpg|jpeg|png|gif|webp|svg)(\\?.*)?$")) {
+      return MessageType.IMAGE;
+    }
+    if (lowerContent.matches(".*\\.(mp4|webm|ogg|mov)(\\?.*)?$")) {
+      return MessageType.VIDEO;
+    }
+    return MessageType.TEXT;
   }
 }

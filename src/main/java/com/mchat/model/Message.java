@@ -3,7 +3,10 @@ package com.mchat.model;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -18,6 +21,10 @@ public class Message extends PanacheEntity {
   public String content;
   public String sender;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "message_type")
+  public MessageType type;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "room_id", nullable = false)
   @JsonIgnore
@@ -26,11 +33,13 @@ public class Message extends PanacheEntity {
   public Instant sentAt;
   public boolean isRead = false;
 
-  public Message() {}
+  public Message() {
+  }
 
-  public Message(String content, String sender, Room room) {
+  public Message(String content, String sender, MessageType type, Room room) {
     this.content = content;
     this.sender = sender;
+    this.type = type;
     this.room = room;
     this.sentAt = Instant.now();
   }

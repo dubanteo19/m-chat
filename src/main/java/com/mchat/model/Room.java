@@ -1,14 +1,16 @@
 package com.mchat.model;
 
+import java.time.Instant;
+
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import java.time.Instant;
 
 @Entity
 public class Room extends PanacheEntityBase {
 
-  @Id public String id;
+  @Id
+  public String id;
 
   public String name;
   public String description;

@@ -28,6 +28,7 @@ public class AuthResource {
   @POST
   @Path("/login")
   public Uni<Response> login(UserLoginRequest request) {
+    System.out.println("reeice request"+ request);
     return authService.loginUser(request).map(userResponse -> Response.ok(userResponse).build());
   }
 }
