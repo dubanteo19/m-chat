@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @WithTransaction
 public class Message extends PanacheEntity {
+  @Column(name = "content", columnDefinition = "TEXT")
   public String content;
   public String sender;
 

@@ -33,31 +33,16 @@ public class RoomService {
   }
 
   @WithTransaction
-  public Uni<Message> saveIncomingMessage(String roomId, String sender, String content) {
+  public Uni<Message> saveIncomingMessage(String roomId, String sender, String content, MessageType messageType) {
     return Room.<Room>findById(roomId)
         .onItem()
         .ifNull()
         .failWith(() -> new IllegalArgumentException("Room not found: " + roomId))
         .chain(
             room -> {
-              var determinedType = determineMessageType(content);
-              var message = new Message(content, sender, determinedType, room);
+              var message = new Message(content, sender, messageType, room);
               return message.persist();
             });
   }
 
-  private MessageType determineMessageType(String content) {
-    if (content == null || content.isBlank()) {
-      return MessageType.TEXT;
-    }
-
-    String lowerContent = content.toLowerCase().trim();
-    if (lowerContent.matches(".*\\.(jpg|jpeg|png|gif|webp|svg)(\\?.*)?$")) {
-      return MessageType.IMAGE;
-    }
-    if (lowerContent.matches(".*\\.(mp4|webm|ogg|mov)(\\?.*)?$")) {
-      return MessageType.VIDEO;
-    }
-    return MessageType.TEXT;
-  }
 }

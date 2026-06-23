@@ -2,6 +2,9 @@ package com.mchat.socket;
 
 import org.jboss.logging.Logger;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mchat.model.MessageType;
 import com.mchat.room.RoomService;
 import com.mchat.room.dto.response.MessageResponse;
 
@@ -22,6 +25,8 @@ public class ChatSocket {
   WebSocketConnection connection;
   @Inject
   RoomService roomService;
+  @Inject
+  ObjectMapper objectMapper;
 
   @OnOpen
   public Uni<Void> onOpen() {
@@ -38,15 +43,32 @@ public class ChatSocket {
     String username = connection.pathParam("username");
     String roomId = connection.pathParam("roomId");
 
-    return roomService
-        .saveIncomingMessage(roomId, username, textContent)
-        .chain(
-            savedMessage -> {
-              return connection
-                  .broadcast()
-                  .filter(c -> c.pathParam("roomId").equals(roomId))
-                  .<MessageResponse>sendText(MessageResponse.from(savedMessage));
-            });
+    try {
+      var jsonNode = objectMapper.readTree(textContent);
+      String typeStr = jsonNode.get("type").asText();
+
+      if ("TYPING_START".equals(typeStr) || "TYPING_STOP".equals(typeStr)) {
+        return connection.broadcast()
+            .filter(c -> c.pathParam("roomId").equals(roomId))
+            .sendText(textContent);
+      }
+
+      MessageType messageType = MessageType.valueOf(typeStr.toUpperCase());
+      String finalContent = jsonNode.get("content").asText();
+
+      return roomService
+          .saveIncomingMessage(roomId, username, finalContent, messageType)
+          .chain(savedMessage -> connection.broadcast()
+              .filter(c -> c.pathParam("roomId").equals(roomId))
+              .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
+
+    } catch (Exception e) {
+      return roomService
+          .saveIncomingMessage(roomId, username, textContent, MessageType.TEXT)
+          .chain(savedMessage -> connection.broadcast()
+              .filter(c -> c.pathParam("roomId").equals(roomId))
+              .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
+    }
   }
 
   @OnClose
