@@ -22,7 +22,7 @@ public class StorageResource {
     MinioClient minioClient;
 
     private static final String BUCKET_NAME = "mchat-public";
-    private static final String MINIO_EXTERNAL_URL = "http://192.168.1.81:9000";
+    private static final String MINIO_EXTERNAL_URL = "https://minio.dbt19.site";
 
     @GET
     @Path("/presigned-url")
@@ -45,7 +45,7 @@ public class StorageResource {
 
             // Construct permanent path structure for asset rendering
             String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + filename;
-
+            // uploadUrl = uploadUrl.replace("http://192.168.1.81:9000", MINIO_EXTERNAL_URL);
             return Response.ok(Map.of(
                     "uploadUrl", uploadUrl,
                     "downloadUrl", downloadUrl)).build();

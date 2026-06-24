@@ -14,7 +14,8 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class RoomResource {
 
-  @Inject RoomService roomService;
+  @Inject
+  RoomService roomService;
 
   @GET
   @Path("/{roomId}/messages")

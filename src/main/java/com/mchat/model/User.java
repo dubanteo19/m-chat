@@ -20,15 +20,19 @@ public class User extends PanacheEntity {
   @Column(nullable = false)
   public String displayName;
 
+  public String title;
+
   public String avatarUrl;
 
-  public User() {}
+  public User() {
+  }
 
-  public User(String username, String password, String displayName, String avatarUrl) {
+  public User(String username, String password, String displayName, String avatarUrl, String title) {
     this.username = username;
     this.password = password;
     this.displayName = displayName;
     this.avatarUrl = avatarUrl;
+    this.title = title;
   }
 
   public static Uni<User> findByUsername(String username) {

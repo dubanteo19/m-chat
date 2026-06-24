@@ -1,5 +1,10 @@
 package com.mchat.model;
 
+import java.time.Instant;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
@@ -10,17 +15,16 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import java.time.Instant;
-import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @WithTransaction
 public class Message extends PanacheEntity {
   @Column(name = "content", columnDefinition = "TEXT")
   public String content;
-  public String sender;
+
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "user_id", nullable = false)
+  public User sender;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "message_type")
@@ -33,15 +37,21 @@ public class Message extends PanacheEntity {
 
   public Instant sentAt;
   public boolean isRead = false;
+  public boolean isDeleted = false;
+
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "parent_id")
+  public Message parentMessage;
 
   public Message() {
   }
 
-  public Message(String content, String sender, MessageType type, Room room) {
+  public Message(String content, User sender, MessageType type, Room room, Message parentMessage) {
     this.content = content;
     this.sender = sender;
     this.type = type;
     this.room = room;
+    this.parentMessage = parentMessage;
     this.sentAt = Instant.now();
   }
 

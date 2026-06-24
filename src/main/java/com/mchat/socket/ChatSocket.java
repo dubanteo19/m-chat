@@ -2,7 +2,6 @@ package com.mchat.socket;
 
 import org.jboss.logging.Logger;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.model.MessageType;
 import com.mchat.room.RoomService;
@@ -47,24 +46,29 @@ public class ChatSocket {
       var jsonNode = objectMapper.readTree(textContent);
       String typeStr = jsonNode.get("type").asText();
 
+      // --- CASE 1: TYPING STATUS INDICATORS ---
       if ("TYPING_START".equals(typeStr) || "TYPING_STOP".equals(typeStr)) {
         return connection.broadcast()
             .filter(c -> c.pathParam("roomId").equals(roomId))
             .sendText(textContent);
       }
 
+      // --- CASE 2: CHAT MESSAGES & INLINE REPLIES ---
       MessageType messageType = MessageType.valueOf(typeStr.toUpperCase());
       String finalContent = jsonNode.get("content").asText();
-
+      Long parentId = jsonNode.has("parentId") && !jsonNode.get("parentId").isNull()
+          ? jsonNode.get("parentId").asLong()
+          : null;
       return roomService
-          .saveIncomingMessage(roomId, username, finalContent, messageType)
+          .saveIncomingMessage(roomId, username, finalContent, messageType, parentId)
           .chain(savedMessage -> connection.broadcast()
               .filter(c -> c.pathParam("roomId").equals(roomId))
               .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
 
     } catch (Exception e) {
+
       return roomService
-          .saveIncomingMessage(roomId, username, textContent, MessageType.TEXT)
+          .saveIncomingMessage(roomId, username, textContent, MessageType.TEXT, null)
           .chain(savedMessage -> connection.broadcast()
               .filter(c -> c.pathParam("roomId").equals(roomId))
               .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
