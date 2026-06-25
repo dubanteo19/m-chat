@@ -44,13 +44,38 @@ public class ChatSocket {
 
     try {
       var jsonNode = objectMapper.readTree(textContent);
+
       String typeStr = jsonNode.get("type").asText();
 
+      // --- CASE 0: TYPING STATUS INDICATORS ---
+      if ("PING".equals(typeStr)) {
+        return Uni.createFrom().voidItem();
+      }
       // --- CASE 1: TYPING STATUS INDICATORS ---
       if ("TYPING_START".equals(typeStr) || "TYPING_STOP".equals(typeStr)) {
         return connection.broadcast()
             .filter(c -> c.pathParam("roomId").equals(roomId))
             .sendText(textContent);
+      }
+
+      // --- CASE 1.5: MESSAGE REACTIONS ---
+      if ("REACTION".equals(typeStr)) {
+        Long messageId = jsonNode.get("messageId").asLong();
+        String emoji = jsonNode.get("content").asText(); // content houses the emoji string e.g., '👍'
+
+        return roomService.saveReaction(roomId, username, messageId, emoji)
+            .chain(reaction -> {
+              var responseNode = objectMapper.createObjectNode();
+              responseNode.put("type", "REACTION");
+              responseNode.put("messageId", messageId);
+              responseNode.put("username", username);
+              responseNode.put("content", emoji);
+              responseNode.put("action", reaction == null ? "REMOVED" : "ADDED");
+
+              return connection.broadcast()
+                  .filter(c -> c.pathParam("roomId").equals(roomId))
+                  .sendText(responseNode.toString());
+            });
       }
 
       // --- CASE 2: CHAT MESSAGES & INLINE REPLIES ---

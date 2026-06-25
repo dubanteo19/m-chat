@@ -1,11 +1,14 @@
 package com.mchat.room;
 
 import com.mchat.model.Message;
+import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
 import com.mchat.model.Room;
 import com.mchat.model.User;
 import com.mchat.room.dto.request.MessagePaginationRequest;
 import com.mchat.room.dto.request.PaginatedMessagesResponse;
+import com.mchat.room.dto.response.MessageResponse;
+
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,7 +20,7 @@ import java.util.Collections;
 public class RoomService {
 
   @WithTransaction
-  public Uni<PaginatedMessagesResponse<Message>> getRoomMessagesPaginated(
+  public Uni<PaginatedMessagesResponse<MessageResponse>> getRoomMessagesPaginated(
       String roomId, MessagePaginationRequest pagination) {
     int limit = pagination.getLimit();
     var before = pagination.before();
@@ -27,7 +30,8 @@ public class RoomService {
             messages -> {
               boolean hasMore = messages.size() == limit;
               Instant nextCursor = messages.isEmpty() ? null : messages.getLast().sentAt;
-              var responseMessages = new ArrayList<>(messages);
+              var responseMessages = new ArrayList<>(
+                  messages.stream().map(MessageResponse::from).toList());
               Collections.reverse(responseMessages);
               return new PaginatedMessagesResponse<>(responseMessages, nextCursor, hasMore);
             });
@@ -38,8 +42,7 @@ public class RoomService {
       Long parentId) {
     return Room.<Room>findById(roomId)
         .onItem().ifNull().failWith(() -> new IllegalArgumentException("Room not found: " + roomId))
-        .chain(room ->
-        User.findByUsername(username)
+        .chain(room -> User.findByUsername(username)
             .onItem().ifNull().failWith(() -> new IllegalArgumentException("User not found: " + username))
             .chain(user -> {
               if (parentId != null) {
@@ -64,6 +67,42 @@ public class RoomService {
           }
           message.isDeleted = true;
           return message.persist();
+        });
+  }
+
+  @WithTransaction
+  public Uni<MessageReaction> saveReaction(String roomId, String username, Long messageId, String emoji) {
+    // 1. First query the User sequentially
+    return User.find("username = ?1", username).<User>firstResult()
+        .chain(user -> {
+          if (user == null) {
+            return Uni.createFrom().failure(new IllegalArgumentException("User not found: " + username));
+          }
+
+          // 2. Next, query the Message sequentially
+          return Message.<Message>findById(messageId)
+              .chain(message -> {
+                if (message == null) {
+                  return Uni.createFrom().failure(new IllegalArgumentException("Message not found: " + messageId));
+                }
+                return MessageReaction.find("message = ?1 and user = ?2", message, user)
+                    .<MessageReaction>firstResult()
+                    .chain(existingReaction -> {
+                      if (existingReaction != null) {
+                        if (existingReaction.type.equals(emoji)) {
+                          return existingReaction.delete().map(v -> (MessageReaction) null);
+                        } else {
+                          existingReaction.type = emoji;
+                          existingReaction.reactedAt = Instant.now();
+                          return existingReaction.persist().map(v -> existingReaction);
+                        }
+                      } else {
+                        // This will now compile perfectly
+                        var newReaction = new MessageReaction(message, user, emoji);
+                        return newReaction.persist().map(v -> newReaction);
+                      }
+                    });
+              });
         });
   }
 }

@@ -10,7 +10,7 @@ public record MessageResponse(
                 SenderInfo sender,
                 String content,
                 String sentAt,
-                boolean isUnsent,
+                boolean isDeleted,
                 RepliedMessageInfo repliedTo) {
 
         public record SenderInfo(
@@ -28,18 +28,16 @@ public record MessageResponse(
         }
 
         public static MessageResponse from(Message message) {
-                // Map sender details safely from the User relation
                 SenderInfo senderInfo = new SenderInfo(
                                 message.sender.username,
                                 message.sender.displayName,
                                 message.sender.avatarUrl,
                                 message.sender.title);
 
-                // Process reply metadata if a parent message exists
                 RepliedMessageInfo repliedInfo = null;
                 if (message.parentMessage != null) {
                         String parentContent = message.parentMessage.isDeleted
-                                        ? "This message was unsent."
+                                        ? "This message was deleted."
                                         : message.parentMessage.content;
 
                         repliedInfo = new RepliedMessageInfo(
@@ -49,8 +47,7 @@ public record MessageResponse(
                                         message.parentMessage.type);
                 }
 
-                // Mask content completely if the message has been unsent
-                String finalContent = message.isDeleted ? "This message was unsent." : message.content;
+                String finalContent = message.isDeleted ? "This message was deleted." : message.content;
 
                 return new MessageResponse(
                                 message.id,
@@ -63,7 +60,7 @@ public record MessageResponse(
         }
 
         public static MessageResponse createJoinMessage(String username) {
-                SenderInfo systemSender = new SenderInfo("system", "System", "assets/system-avatar.png", "SERVER");
+                var systemSender = new SenderInfo("system", "System", "assets/system-avatar.png", "SERVER");
 
                 return new MessageResponse(
                                 999999999L,
