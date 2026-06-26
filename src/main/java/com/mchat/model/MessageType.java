@@ -5,5 +5,6 @@ public enum MessageType {
     IMAGE,
     REACTION,
     VIDEO,
-    SYSTEM
+    SYSTEM,
+    STICKER
 }

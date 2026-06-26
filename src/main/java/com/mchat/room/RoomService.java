@@ -18,6 +18,8 @@ import java.util.Collections;
 
 @ApplicationScoped
 public class RoomService {
+  public record ReactionResult(MessageReaction reaction, User user) {
+  }
 
   @WithTransaction
   public Uni<PaginatedMessagesResponse<MessageResponse>> getRoomMessagesPaginated(
@@ -71,38 +73,47 @@ public class RoomService {
   }
 
   @WithTransaction
-  public Uni<MessageReaction> saveReaction(String roomId, String username, Long messageId, String emoji) {
-    // 1. First query the User sequentially
+  public Uni<ReactionResult> saveReaction(String roomId, String username, Long messageId, String emoji) {
     return User.find("username = ?1", username).<User>firstResult()
         .chain(user -> {
           if (user == null) {
             return Uni.createFrom().failure(new IllegalArgumentException("User not found: " + username));
           }
-
-          // 2. Next, query the Message sequentially
           return Message.<Message>findById(messageId)
               .chain(message -> {
                 if (message == null) {
                   return Uni.createFrom().failure(new IllegalArgumentException("Message not found: " + messageId));
                 }
-                return MessageReaction.find("message = ?1 and user = ?2", message, user)
-                    .<MessageReaction>firstResult()
-                    .chain(existingReaction -> {
-                      if (existingReaction != null) {
-                        if (existingReaction.type.equals(emoji)) {
-                          return existingReaction.delete().map(v -> (MessageReaction) null);
-                        } else {
-                          existingReaction.type = emoji;
-                          existingReaction.reactedAt = Instant.now();
-                          return existingReaction.persist().map(v -> existingReaction);
-                        }
-                      } else {
-                        // This will now compile perfectly
-                        var newReaction = new MessageReaction(message, user, emoji);
-                        return newReaction.persist().map(v -> newReaction);
-                      }
-                    });
+
+                if (message.reactions == null) {
+                  message.reactions = new java.util.ArrayList<>();
+                }
+
+                MessageReaction managedReaction = message.reactions.stream()
+                    .filter(r -> r.user != null && r.user.username.equals(username))
+                    .findFirst()
+                    .orElse(null);
+
+                if (managedReaction != null) {
+                  if (managedReaction.type.equals(emoji)) {
+                    // REMOVE ACTION
+                    message.reactions.remove(managedReaction);
+                    // Return null for reaction, but pass along the managed user object!
+                    return Uni.createFrom().item(new ReactionResult(null, user));
+                  } else {
+                    // UPDATE ACTION
+                    managedReaction.type = emoji;
+                    managedReaction.reactedAt = java.time.Instant.now();
+                    return managedReaction.persist().map(v -> new ReactionResult(managedReaction, user));
+                  }
+                } else {
+                  // ADD ACTION
+                  var newReaction = new MessageReaction(message, user, emoji);
+                  message.reactions.add(newReaction);
+                  return newReaction.persist().map(v -> new ReactionResult(newReaction, user));
+                }
               });
         });
   }
+
 }

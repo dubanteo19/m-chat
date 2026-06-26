@@ -1,6 +1,9 @@
 package com.mchat.room.dto.response;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.mchat.model.Message;
 import com.mchat.model.MessageType;
 
@@ -10,8 +13,9 @@ public record MessageResponse(
                 SenderInfo sender,
                 String content,
                 String sentAt,
-                boolean isDeleted,
-                RepliedMessageInfo repliedTo) {
+                RepliedMessageInfo repliedTo,
+                List<ReactionInfo> reactions,
+                boolean isDeleted) {
 
         public record SenderInfo(
                         String username,
@@ -48,6 +52,11 @@ public record MessageResponse(
                 }
 
                 String finalContent = message.isDeleted ? "This message was deleted." : message.content;
+                List<ReactionInfo> reactionInfos = (message.reactions == null)
+                                ? List.of()
+                                : message.reactions.stream()
+                                                .map(ReactionInfo::from)
+                                                .collect(Collectors.toList());
 
                 return new MessageResponse(
                                 message.id,
@@ -55,8 +64,9 @@ public record MessageResponse(
                                 senderInfo,
                                 finalContent,
                                 message.sentAt != null ? message.sentAt.toString() : Instant.now().toString(),
-                                message.isDeleted,
-                                repliedInfo);
+                                repliedInfo,
+                                reactionInfos,
+                                message.isDeleted);
         }
 
         public static MessageResponse createJoinMessage(String username) {
@@ -68,7 +78,8 @@ public record MessageResponse(
                                 systemSender,
                                 username + " joined the room.",
                                 Instant.now().toString(),
-                                false,
-                                null);
+                                null,
+                                List.of(),
+                                false);
         }
 }

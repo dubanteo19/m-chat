@@ -3,7 +3,9 @@ package com.mchat.socket;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
+import com.mchat.model.User;
 import com.mchat.room.RoomService;
 import com.mchat.room.dto.response.MessageResponse;
 
@@ -61,16 +63,33 @@ public class ChatSocket {
       // --- CASE 1.5: MESSAGE REACTIONS ---
       if ("REACTION".equals(typeStr)) {
         Long messageId = jsonNode.get("messageId").asLong();
-        String emoji = jsonNode.get("content").asText(); // content houses the emoji string e.g., '👍'
+        String emoji = jsonNode.get("content").asText();
 
         return roomService.saveReaction(roomId, username, messageId, emoji)
-            .chain(reaction -> {
+            .chain(result -> {
+              MessageReaction reaction = result.reaction();
+              User user = result.user();
+
               var responseNode = objectMapper.createObjectNode();
               responseNode.put("type", "REACTION");
               responseNode.put("messageId", messageId);
-              responseNode.put("username", username);
-              responseNode.put("content", emoji);
               responseNode.put("action", reaction == null ? "REMOVED" : "ADDED");
+
+              // Construct the structural ReactionInfo payload object
+              var senderNode = objectMapper.createObjectNode();
+              senderNode.put("username", user.username);
+              senderNode.put("displayName", user.displayName);
+              senderNode.put("avatarUrl", user.avatarUrl);
+              senderNode.put("title", user.title);
+
+              var reactionNode = objectMapper.createObjectNode();
+              reactionNode.put("type", emoji);
+              reactionNode.set("sender", senderNode);
+              reactionNode.put("reactedAt", reaction != null && reaction.reactedAt != null
+                  ? reaction.reactedAt.toString()
+                  : java.time.Instant.now().toString());
+
+              responseNode.set("reaction", reactionNode);
 
               return connection.broadcast()
                   .filter(c -> c.pathParam("roomId").equals(roomId))
