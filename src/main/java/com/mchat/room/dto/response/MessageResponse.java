@@ -4,25 +4,19 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.Message;
 import com.mchat.model.MessageType;
 
 public record MessageResponse(
                 Long id,
                 MessageType type,
-                SenderInfo sender,
+                UserInfo sender,
                 String content,
                 String sentAt,
                 RepliedMessageInfo repliedTo,
                 List<ReactionInfo> reactions,
                 boolean isDeleted) {
-
-        public record SenderInfo(
-                        String username,
-                        String displayName,
-                        String avatarUrl,
-                        String title) {
-        }
 
         public record RepliedMessageInfo(
                         Long id,
@@ -32,7 +26,8 @@ public record MessageResponse(
         }
 
         public static MessageResponse from(Message message) {
-                SenderInfo senderInfo = new SenderInfo(
+                var senderInfo = new UserInfo(
+                                message.sender.id,
                                 message.sender.username,
                                 message.sender.displayName,
                                 message.sender.avatarUrl,
@@ -70,7 +65,7 @@ public record MessageResponse(
         }
 
         public static MessageResponse createJoinMessage(String username) {
-                var systemSender = new SenderInfo("system", "System", "assets/system-avatar.png", "SERVER");
+                var systemSender = new UserInfo(999999999L, "system", "System", "assets/system-avatar.png", "SERVER");
 
                 return new MessageResponse(
                                 999999999L,

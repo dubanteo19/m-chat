@@ -22,13 +22,13 @@ public class AuthResource {
   public Uni<Response> register(UserRegisterRequest request) {
     return authService
         .registerUser(request)
-        .map(userResponse -> Response.status(Response.Status.CREATED).entity(userResponse).build());
+        .map(userInfo -> Response.status(Response.Status.CREATED).entity(userInfo).build());
   }
 
   @POST
   @Path("/login")
   public Uni<Response> login(UserLoginRequest request) {
     System.out.println("reeice request"+ request);
-    return authService.loginUser(request).map(userResponse -> Response.ok(userResponse).build());
+    return authService.loginUser(request).map(userInfo -> Response.ok(userInfo).build());
   }
 }

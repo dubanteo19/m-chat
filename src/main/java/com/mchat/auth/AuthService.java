@@ -2,7 +2,7 @@ package com.mchat.auth;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
-import com.mchat.auth.dto.response.UserResponse;
+import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.exception.InvalidCredentialsException;
 import com.mchat.exception.UsernameAlreadyExistsException;
 import com.mchat.model.User;
@@ -14,7 +14,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class AuthService {
 
   @WithTransaction
-  public Uni<UserResponse> registerUser(UserRegisterRequest request) {
+  public Uni<UserInfo> registerUser(UserRegisterRequest request) {
     return User.findByUsername(request.username())
         .chain(
             existingUser -> {
@@ -26,19 +26,19 @@ public class AuthService {
               user.username = request.username();
               user.displayName = request.displayName();
               user.setAndHashPassword(request.password());
-              return user.persist().replaceWith(() -> UserResponse.fromEntity(user));
+              return user.persist().replaceWith(() -> UserInfo.fromEntity(user));
             });
   }
 
   @WithTransaction
-  public Uni<UserResponse> loginUser(UserLoginRequest request) {
+  public Uni<UserInfo> loginUser(UserLoginRequest request) {
     return User.findByUsername(request.username())
         .map(
             user -> {
               if (user == null || !user.checkPassword(request.password())) {
                 throw new InvalidCredentialsException();
               }
-              return UserResponse.fromEntity(user);
+              return UserInfo.fromEntity(user);
             });
   }
 }
