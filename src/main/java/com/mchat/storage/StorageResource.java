@@ -42,9 +42,7 @@ public class StorageResource {
                   .expiry(5, TimeUnit.MINUTES)
                   .build());
 
-      // Construct permanent path structure for asset rendering
       String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + filename;
-      // uploadUrl = uploadUrl.replace("http://192.168.1.81:9000", MINIO_EXTERNAL_URL);
       return Response.ok(
               Map.of(
                   "uploadUrl", uploadUrl,
@@ -58,4 +56,3 @@ public class StorageResource {
     }
   }
 }
-
