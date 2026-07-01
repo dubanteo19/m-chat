@@ -1,5 +1,8 @@
 package com.mchat.model;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.smallrye.mutiny.Uni;
@@ -22,17 +25,33 @@ public class User extends PanacheEntity {
 
   public String title;
 
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "title_style")
+  public TitleStyle titleStyle;
+
+  public static class TitleStyle {
+    public String textColor = "#7e22ce";
+    public String backgroundColor = "#f3e8ff";
+    public String borderRadius = "4px";
+    public String borderStyle = "none";
+    public String borderColor = "transparent";
+    public String textEffect = "none";
+    public String animationVibe = "none";
+  }
+
   public String avatarUrl;
 
   public User() {
   }
 
-  public User(String username, String password, String displayName, String avatarUrl, String title) {
+  public User(String username, String password, String displayName, String avatarUrl, String title,
+      TitleStyle titleStyle) {
     this.username = username;
     this.password = password;
     this.displayName = displayName;
     this.avatarUrl = avatarUrl;
     this.title = title;
+    this.titleStyle = titleStyle;
   }
 
   public static Uni<User> findByUsername(String username) {

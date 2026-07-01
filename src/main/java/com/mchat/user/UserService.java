@@ -39,6 +39,10 @@ public class UserService {
           if (request.avatarUrl != null) {
             user.avatarUrl = request.avatarUrl;
           }
+
+          if (request.titleStyle != null) {
+            user.titleStyle = request.titleStyle;
+          }
         });
   }
 }
