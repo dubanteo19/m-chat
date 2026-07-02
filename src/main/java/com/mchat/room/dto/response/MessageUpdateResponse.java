@@ -32,4 +32,3 @@ public record MessageUpdateResponse(
     return new MessageUpdateResponse("REACTION", messageId, actionStr, broadcastInfo);
   }
 }
-

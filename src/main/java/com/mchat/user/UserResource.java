@@ -1,7 +1,7 @@
 package com.mchat.user;
 
+import com.mchat.model.json.PushSubscription;
 import com.mchat.user.dto.request.UpdateProfileRequest;
-
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -18,20 +18,35 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class UserResource {
 
-    @Inject
-    UserService userService;
+  @Inject UserService userService;
 
-    @GET
-    @Path("/{username}/profile")
-    public Uni<Response> getUserProfile(@PathParam("username") String username) {
-        return userService.getUserInfoByUsername(username)
-                .onItem().transform(userInfo -> Response.ok(userInfo).build());
-    }
+  @GET
+  @Path("/{username}/profile")
+  public Uni<Response> getUserProfile(@PathParam("username") String username) {
+    return userService
+        .getUserInfoByUsername(username)
+        .onItem()
+        .transform(userInfo -> Response.ok(userInfo).build());
+  }
 
-    @PUT
-    @Path("/{username}/profile")
-    public Uni<Response> updateProfile(@PathParam("username") String username, UpdateProfileRequest request) {
-        return userService.updateProfile(username, request)
-                .onItem().transform(updatedUser -> Response.ok(updatedUser).build());
-    }
+  @PUT
+  @Path("/{username}/profile")
+  public Uni<Response> updateProfile(
+      @PathParam("username") String username, UpdateProfileRequest request) {
+    return userService
+        .updateProfile(username, request)
+        .onItem()
+        .transform(updatedUser -> Response.ok(updatedUser).build());
+  }
+
+  @PUT
+  @Path("/{username}/push-subscription")
+  public Uni<Response> saveSubscription(
+      @PathParam("username") String username, PushSubscription subscription) {
+
+    return userService
+        .saveSubscription(username, subscription)
+        .replaceWith(Response.noContent().build());
+  }
 }
+

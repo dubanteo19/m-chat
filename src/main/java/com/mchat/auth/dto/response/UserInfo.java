@@ -1,11 +1,17 @@
 package com.mchat.auth.dto.response;
 
 import com.mchat.model.User;
+import com.mchat.model.json.TitleStyle;
 
 public record UserInfo(
-    Long id, String username, String displayName, String avatarUrl, String title, User.TitleStyle titleStyle) {
+    Long id,
+    String username,
+    String displayName,
+    String avatarUrl,
+    String title,
+    TitleStyle titleStyle) {
   public UserInfo(String username, String displayName, String avatarUrl, String title) {
-    this(999999999L, username, displayName, avatarUrl, title, new User.TitleStyle());
+    this(999999999L, username, displayName, avatarUrl, title, new TitleStyle());
   }
 
   public static UserInfo fromEntity(User user) {
@@ -15,7 +21,6 @@ public record UserInfo(
         user.displayName,
         user.avatarUrl,
         user.title,
-        user.titleStyle != null ? user.titleStyle : new User.TitleStyle());
+        user.titleStyle != null ? user.titleStyle : new TitleStyle());
   }
-
 }
