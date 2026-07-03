@@ -4,6 +4,8 @@ import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.User;
 import com.mchat.model.json.PushSubscription;
 import com.mchat.user.dto.request.UpdateProfileRequest;
+
+import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,7 +14,7 @@ import jakarta.ws.rs.NotFoundException;
 @ApplicationScoped
 public class UserService {
 
-  @WithTransaction
+  @WithSession
   public Uni<User> findByUsername(String username) {
     return User.findByUsername(username);
   }

@@ -1,5 +1,4 @@
 package com.mchat.model;
-
 import com.mchat.model.json.PushSubscription;
 import com.mchat.model.json.TitleStyle;
 import io.quarkus.elytron.security.common.BcryptUtil;
