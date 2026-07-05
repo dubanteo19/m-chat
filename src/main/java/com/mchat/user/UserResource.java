@@ -1,23 +1,20 @@
 package com.mchat.user;
 
-import java.util.Map;
-
-import org.jboss.logging.Logger;
-
 import com.mchat.model.json.PushSubscription;
 import com.mchat.notification.NotificationService;
+import com.mchat.roommember.RoomMemberService;
 import com.mchat.user.dto.request.UpdateProfileRequest;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.jboss.logging.Logger;
 
 @Path("/users")
 @Produces(MediaType.APPLICATION_JSON)
@@ -27,6 +24,7 @@ public class UserResource {
   private static final Logger LOG = Logger.getLogger(UserResource.class);
   @Inject UserService userService;
   @Inject NotificationService notificationService;
+  @Inject RoomMemberService roomMemberService;
 
   @GET
   @Path("/{username}/profile")
@@ -36,25 +34,7 @@ public class UserResource {
         .onItem()
         .transform(userInfo -> Response.ok(userInfo).build());
   }
-@POST
-@Path("/{username}/test-push")
-public Uni<Response> triggerTestPush(@PathParam("username") String username) {
-    LOG.info("sending notification to user: " + username);
-    return userService.findByUsername(username)
-        .chain(user -> {
-            if (user == null) {
-                return Uni.createFrom().item(Response.status(Response.Status.NOT_FOUND).build());
-            }
-              
-            // RETURN this Uni chain so Mutiny can subscribe and execute it!
-            return notificationService.sendPushNotification(
-                user, 
-                "Test Message", 
-                "Hey! If you see this, your Web Push setup is working perfectly 🎉"
-            )
-            .replaceWith(Response.ok(Map.of("status", "Push triggered")).build());
-        });
-}
+
   @PUT
   @Path("/{username}/profile")
   public Uni<Response> updateProfile(
@@ -63,6 +43,12 @@ public Uni<Response> triggerTestPush(@PathParam("username") String username) {
         .updateProfile(username, request)
         .onItem()
         .transform(updatedUser -> Response.ok(updatedUser).build());
+  }
+
+  @GET
+  @Path("/{username}/rooms")
+  public Uni<Response> getRooms(@PathParam("username") String username) {
+    return roomMemberService.findRoomsByUsername(username).map(rooms -> Response.ok(rooms).build());
   }
 
   @PUT
@@ -75,4 +61,3 @@ public Uni<Response> triggerTestPush(@PathParam("username") String username) {
         .replaceWith(Response.noContent().build());
   }
 }
-

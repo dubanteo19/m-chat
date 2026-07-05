@@ -4,7 +4,6 @@ import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.User;
 import com.mchat.model.json.PushSubscription;
 import com.mchat.user.dto.request.UpdateProfileRequest;
-
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
@@ -16,26 +15,20 @@ public class UserService {
 
   @WithSession
   public Uni<User> findByUsername(String username) {
-    return User.findByUsername(username);
+    return User.findByUsername(username)
+        .onItem()
+        .ifNull()
+        .failWith(() -> new NotFoundException("User not found"));
   }
 
   @WithTransaction
   public Uni<UserInfo> getUserInfoByUsername(String username) {
-    return findByUsername(username)
-        .onItem()
-        .ifNull()
-        .failWith(() -> new NotFoundException("User not found"))
-        .onItem()
-        .transform(userEntity -> UserInfo.fromEntity(userEntity));
+    return findByUsername(username).map(userEntity -> UserInfo.fromEntity(userEntity));
   }
 
   @WithTransaction
   public Uni<User> updateProfile(String username, UpdateProfileRequest request) {
-    return User.findByUsername(username)
-        .onItem()
-        .ifNull()
-        .failWith(new NotFoundException("User not found"))
-        .onItem()
+    return findByUsername(username)
         .invoke(
             user -> {
               if (request.displayName != null && !request.displayName.isBlank()) {
@@ -56,10 +49,7 @@ public class UserService {
 
   @WithTransaction
   public Uni<Void> saveSubscription(String username, PushSubscription subscription) {
-    return User.findByUsername(username)
-        .onItem()
-        .ifNull()
-        .failWith(() -> new NotFoundException("User not found"))
+    return findByUsername(username)
         .invoke(user -> user.pushSubscription = subscription)
         .replaceWithVoid();
   }
