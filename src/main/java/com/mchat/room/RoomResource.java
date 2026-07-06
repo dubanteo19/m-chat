@@ -1,5 +1,6 @@
 package com.mchat.room;
 
+import com.mchat.room.dto.request.CreateRoomRequest;
 import com.mchat.room.dto.request.MessagePaginationRequest;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,7 +15,15 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class RoomResource {
 
-  @Inject RoomService roomService;
+  @Inject
+  RoomService roomService;
+
+  @POST
+  public Uni<Response> create(CreateRoomRequest request) {
+    return roomService
+        .create(request)
+        .map(payload -> Response.ok(payload).build());
+  }
 
   @GET
   @Path("/{roomId}/messages")

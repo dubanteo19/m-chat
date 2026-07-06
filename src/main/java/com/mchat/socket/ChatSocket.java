@@ -25,12 +25,15 @@ import org.jboss.logging.Logger;
 public class ChatSocket {
 
   private static final Logger LOG = Logger.getLogger(ChatSocket.class);
-  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers =
-      new ConcurrentHashMap<>();
-  @Inject WebSocketConnection connection;
-  @Inject RoomService roomService;
-  @Inject ObjectMapper objectMapper;
-  @Inject UserService userService;
+  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers = new ConcurrentHashMap<>();
+  @Inject
+  WebSocketConnection connection;
+  @Inject
+  RoomService roomService;
+  @Inject
+  ObjectMapper objectMapper;
+  @Inject
+  UserService userService;
 
   @OnOpen
   public Uni<Void> onOpen() {
@@ -48,8 +51,7 @@ public class ChatSocket {
 
               var userInfo = UserInfo.fromEntity(user);
               roomUsers.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(userInfo);
-              var joinMessage =
-                  MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
+              var joinMessage = MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
               var onlineUsersPayload = OnlineUsersResponse.from(roomUsers.get(roomId));
 
               try {
@@ -57,19 +59,18 @@ public class ChatSocket {
                 String onlineJson = objectMapper.writeValueAsString(onlineUsersPayload);
 
                 // Broadcast the text "Join" alert to EVERYONE ELSE in that specific room
-                Uni<Void> broadcastJoinAlert =
-                    connection
-                        .broadcast()
-                        .filter(c -> roomId.equals(c.pathParam("roomId")) && !c.equals(connection))
-                        .sendText(joinJson);
+                Uni<Void> broadcastJoinAlert = connection
+                    .broadcast()
+                    .filter(c -> roomId.equals(c.pathParam("roomId")) && !c.equals(connection))
+                    .sendText(joinJson);
 
-                // Broadcast the FRESH USER LIST to EVERYONE in that specific room (including the
+                // Broadcast the FRESH USER LIST to EVERYONE in that specific room (including
+                // the
                 // new user)
-                Uni<Void> broadcastUserList =
-                    connection
-                        .broadcast()
-                        .filter(c -> roomId.equals(c.pathParam("roomId")))
-                        .sendText(onlineJson);
+                Uni<Void> broadcastUserList = connection
+                    .broadcast()
+                    .filter(c -> roomId.equals(c.pathParam("roomId")))
+                    .sendText(onlineJson);
 
                 return Uni.combine()
                     .all()
@@ -113,10 +114,8 @@ public class ChatSocket {
             .saveReaction(roomId, username, messageId, emoji)
             .chain(
                 result -> {
-                  // 1. Build the strongly typed payload using the factory method
-                  var responsePayload =
-                      MessageUpdateResponse.createReactionUpdate(
-                          messageId, emoji, result.reaction(), result.user());
+                  var responsePayload = MessageUpdateResponse.createReactionUpdate(
+                      messageId, emoji, result.reaction(), result.user());
 
                   try {
                     String jsonText = objectMapper.writeValueAsString(responsePayload);
@@ -133,29 +132,26 @@ public class ChatSocket {
       // --- CASE 2: CHAT MESSAGES & INLINE REPLIES ---
       MessageType messageType = MessageType.valueOf(typeStr.toUpperCase());
       String finalContent = jsonNode.get("content").asText();
-      Long parentId =
-          jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
-              ? jsonNode.get("replyTo").asLong()
-              : null;
+      Long parentId = jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
+          ? jsonNode.get("replyTo").asLong()
+          : null;
       return roomService
           .saveIncomingMessage(roomId, username, finalContent, messageType, parentId)
           .chain(
-              savedMessage ->
-                  connection
-                      .broadcast()
-                      .filter(c -> c.pathParam("roomId").equals(roomId))
-                      .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
+              savedMessage -> connection
+                  .broadcast()
+                  .filter(c -> c.pathParam("roomId").equals(roomId))
+                  .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
 
     } catch (Exception e) {
 
       return roomService
           .saveIncomingMessage(roomId, username, textContent, MessageType.TEXT, null)
           .chain(
-              savedMessage ->
-                  connection
-                      .broadcast()
-                      .filter(c -> c.pathParam("roomId").equals(roomId))
-                      .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
+              savedMessage -> connection
+                  .broadcast()
+                  .filter(c -> c.pathParam("roomId").equals(roomId))
+                  .<MessageResponse>sendText(MessageResponse.from(savedMessage)));
     }
   }
 
@@ -171,8 +167,7 @@ public class ChatSocket {
 
     Set<UserInfo> users = roomUsers.get(roomId);
     if (users != null) {
-      var leavingUser =
-          users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
+      var leavingUser = users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
 
       users.removeIf(u -> username.equals(u.username()));
 
@@ -181,25 +176,22 @@ public class ChatSocket {
         return Uni.createFrom().voidItem();
       }
 
-      var leaveMessage =
-          MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
+      var leaveMessage = MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
       var updatedOnlineUsersPayload = OnlineUsersResponse.from(users);
 
       try {
         String leaveJson = objectMapper.writeValueAsString(leaveMessage);
         String onlineJson = objectMapper.writeValueAsString(updatedOnlineUsersPayload);
 
-        Uni<Void> broadcastLeaveAlert =
-            connection
-                .broadcast()
-                .filter(c -> roomId.equals(c.pathParam("roomId")))
-                .sendText(leaveJson);
+        Uni<Void> broadcastLeaveAlert = connection
+            .broadcast()
+            .filter(c -> roomId.equals(c.pathParam("roomId")))
+            .sendText(leaveJson);
 
-        Uni<Void> broadcastUpdatedList =
-            connection
-                .broadcast()
-                .filter(c -> roomId.equals(c.pathParam("roomId")))
-                .sendText(onlineJson);
+        Uni<Void> broadcastUpdatedList = connection
+            .broadcast()
+            .filter(c -> roomId.equals(c.pathParam("roomId")))
+            .sendText(onlineJson);
 
         return Uni.combine().all().unis(broadcastLeaveAlert, broadcastUpdatedList).discardItems();
 
