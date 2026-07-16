@@ -24,8 +24,7 @@ public class AuthService {
           var user = new User();
           user.username = request.username();
           user.displayName = request.displayName();
-          user.password = request.password(); 
-
+          user.password = request.password();
           return user.persist().replaceWith(() -> UserInfo.fromEntity(user));
         });
   }

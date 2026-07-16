@@ -16,54 +16,55 @@ import jakarta.inject.Inject;
 import nl.martijndwars.webpush.Encoding;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
+
 @ApplicationScoped
 public class NotificationService {
 
-  private final PushService pushService;
-  @Inject ObjectMapper objectMapper;
-  public NotificationService(
-    @ConfigProperty(name = "vapid.public.key") String publicKey,
-    @ConfigProperty(name = "vapid.private.key") String privateKey,
-    @ConfigProperty(name = "vapid.subject") String subject)
-    throws Exception {
+    private final PushService pushService;
+    @Inject
+    ObjectMapper objectMapper;
 
-  if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-        Security.addProvider(new BouncyCastleProvider());
-    }
-  this.pushService = new PushService(publicKey, privateKey, subject);
-}
+    public NotificationService(
+            @ConfigProperty(name = "vapid.public.key") String publicKey,
+            @ConfigProperty(name = "vapid.private.key") String privateKey,
+            @ConfigProperty(name = "vapid.subject") String subject)
+            throws Exception {
 
-public Uni<Void> sendPushNotification(User recipient, String title, String body) {
-    if (recipient.pushSubscription == null || recipient.pushSubscription.endpoint == null) {
-        return Uni.createFrom().voidItem();
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+        this.pushService = new PushService(publicKey, privateKey, subject);
     }
 
-    return Uni.createFrom()
-        .item(() -> {
-            try {
+    public Uni<Void> notify(User recipient, String title, String body) {
+        if (recipient.pushSubscription == null || recipient.pushSubscription.endpoint == null) {
+            return Uni.createFrom().voidItem();
+        }
 
-                String endpoint = recipient.pushSubscription.endpoint;
-                String p256dh = recipient.pushSubscription.keys.get("p256dh");
-                String auth = recipient.pushSubscription.keys.get("auth");
+        return Uni.createFrom()
+                .item(() -> {
+                    try {
 
-                Map<String, String> payload = Map.of(
-                    "title", title,
-                    "body", body
-                );
-                String json = objectMapper.writeValueAsString(payload);
+                        String endpoint = recipient.pushSubscription.endpoint;
+                        String p256dh = recipient.pushSubscription.keys.get("p256dh");
+                        String auth = recipient.pushSubscription.keys.get("auth");
 
-                var notification = new Notification(endpoint, p256dh, auth, json);
+                        Map<String, String> payload = Map.of(
+                                "title", title,
+                                "body", body);
+                        String json = objectMapper.writeValueAsString(payload);
 
-                pushService.send(notification, Encoding.AES128GCM);
-               
-                
-            } catch (Exception e) {
-                System.out.println("Error sending push notification: " + e.getMessage());
-                e.printStackTrace();
-            }
-            return null;
-        })
-        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
-        .replaceWithVoid();
-}
+                        var notification = new Notification(endpoint, p256dh, auth, json);
+
+                        pushService.send(notification, Encoding.AES128GCM);
+
+                    } catch (Exception e) {
+                        System.out.println("Error sending push notification: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                    return null;
+                })
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .replaceWithVoid();
+    }
 }
