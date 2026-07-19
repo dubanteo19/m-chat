@@ -20,7 +20,7 @@ public class StorageResource {
   @Inject MinioClient minioClient;
 
   private static final String BUCKET_NAME = "mchat-public";
-  private static final String MINIO_EXTERNAL_URL = "https://minio.dbt19.site";
+  private static final String MINIO_EXTERNAL_URL = "https://mminio.dbt19.site";
 
   @GET
   @Path("/presigned-url")

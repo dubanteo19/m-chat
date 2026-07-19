@@ -1,6 +1,6 @@
 package com.mchat.roommember;
 
-import com.mchat.model.Room;
+import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.RoomMember;
 import com.mchat.model.RoomRole;
 import com.mchat.room.RoomService;
@@ -17,6 +17,11 @@ import java.util.List;
 public class RoomMemberService {
   @Inject RoomService roomService;
   @Inject UserService userService;
+
+  @WithTransaction
+  public Uni<List<UserInfo>> findMembersByRoom(String roomId) {
+    return null;
+  }
 
   @WithSession
   public Uni<RoomMember> findMember(String roomId, Long userId) {
@@ -55,10 +60,5 @@ public class RoomMemberService {
             })
         .chain(targetUser -> findMember(roomId, targetUser.id))
         .chain(targetMember -> targetMember.delete().replaceWith(true));
-  }
-
-  @WithSession
-  public Uni<List<Room>> findRoomsByUsername(String username) {
-    return userService.findByUsername(username).chain(user -> RoomMember.findRoomsByUser(user.id));
   }
 }

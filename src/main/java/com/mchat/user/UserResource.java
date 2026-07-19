@@ -2,7 +2,7 @@ package com.mchat.user;
 
 import com.mchat.model.json.PushSubscription;
 import com.mchat.notification.NotificationService;
-import com.mchat.roommember.RoomMemberService;
+import com.mchat.room.RoomService;
 import com.mchat.user.dto.request.UpdateProfileRequest;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
@@ -24,7 +24,7 @@ public class UserResource {
   private static final Logger LOG = Logger.getLogger(UserResource.class);
   @Inject UserService userService;
   @Inject NotificationService notificationService;
-  @Inject RoomMemberService roomMemberService;
+  @Inject RoomService roomService;
 
   @GET
   @Path("/{username}/profile")
@@ -48,7 +48,7 @@ public class UserResource {
   @GET
   @Path("/{username}/rooms")
   public Uni<Response> getRooms(@PathParam("username") String username) {
-    return roomMemberService.findRoomsByUsername(username).map(rooms -> Response.ok(rooms).build());
+    return roomService.findRoomsByUsername(username).map(rooms -> Response.ok(rooms).build());
   }
 
   @PUT

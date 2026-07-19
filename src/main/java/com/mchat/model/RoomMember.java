@@ -46,9 +46,16 @@ public class RoomMember extends PanacheEntity {
     return find("room_id = ?1 and user_id = ?2", roomId, userId).firstResult();
   }
 
+  public static Uni<List<RoomMember>> findMembersByRoom(String roomId) {
+    return RoomMember.<RoomMember>find(
+            "from RoomMember rm join fetch rm.user where rm.room.id = ?1", roomId)
+        .list();
+  }
+
   public static Uni<List<Room>> findRoomsByUser(Long userId) {
-    return RoomMember.<RoomMember>find("user.id = ?1", userId)
+    return RoomMember.<RoomMember>find(
+            "from RoomMember rm join fetch rm.room where rm.user.id = ?1", userId)
         .list()
-        .map(members -> members.stream().map((RoomMember member) -> member.room).toList());
+        .map(members -> members.stream().map(member -> member.room).toList());
   }
 }

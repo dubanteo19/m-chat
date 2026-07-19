@@ -1,13 +1,11 @@
 package com.mchat.model;
 
-import java.time.Instant;
-
 import com.github.slugify.Slugify;
-
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import java.time.Instant;
 
 @Entity
 public class Room extends PanacheEntityBase {
@@ -18,7 +16,7 @@ public class Room extends PanacheEntityBase {
   public String description;
   public Instant createdAt;
 
-  public static Uni<Room> createAndJoin( String name, String description, User creator) {
+  public static Uni<Room> createAndJoin(String name, String description, User creator) {
     var room = Room.create(name, description);
     return room.<Room>persist()
         .chain(
@@ -35,5 +33,5 @@ public class Room extends PanacheEntityBase {
     room.description = description;
     room.createdAt = Instant.now();
     return room;
-}
+  }
 }

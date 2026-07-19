@@ -2,7 +2,6 @@ package com.mchat.auth;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
-import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,9 +23,7 @@ public class AuthResource {
 
   @POST
   @Path("/register")
-  @Blocking
   public Uni<Response> register(UserRegisterRequest request) {
-    // 1. Call a dedicated password service to hash the password safely
     return passwordService
         .hashPassword(request.password())
         .chain(
@@ -35,7 +32,6 @@ public class AuthResource {
                   new UserRegisterRequest(
                       request.username(), hashedPassword, request.displayName());
 
-              // 2. Pass control to your transactional database service
               return authService
                   .registerUser(secureRequest)
                   .map(

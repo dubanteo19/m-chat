@@ -26,18 +26,14 @@ import org.jboss.logging.Logger;
 public class ChatSocket {
 
   private static final Logger LOG = Logger.getLogger(ChatSocket.class);
-  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers =
+      new ConcurrentHashMap<>();
 
-  @Inject
-  NotificationService notificationService;
-  @Inject
-  WebSocketConnection connection;
-  @Inject
-  RoomService roomService;
-  @Inject
-  ObjectMapper objectMapper;
-  @Inject
-  UserService userService;
+  @Inject NotificationService notificationService;
+  @Inject WebSocketConnection connection;
+  @Inject RoomService roomService;
+  @Inject ObjectMapper objectMapper;
+  @Inject UserService userService;
 
   public static <M> Uni<Void> sendToRoom(WebSocketConnection connection, String roomId, M payload) {
     return connection
@@ -46,7 +42,8 @@ public class ChatSocket {
         .sendText(payload);
   }
 
-  public static Uni<Void> sendToRoom(WebSocketConnection connection, String roomId, String payload) {
+  public static Uni<Void> sendToRoom(
+      WebSocketConnection connection, String roomId, String payload) {
     return connection
         .broadcast()
         .filter(c -> roomId.equals(c.pathParam("roomId")))
@@ -69,16 +66,15 @@ public class ChatSocket {
 
               var userInfo = UserInfo.fromEntity(user);
               roomUsers.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(userInfo);
-              var joinMessage = MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
+              var joinMessage =
+                  MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
               var onlineUsersPayload = OnlineUsersResponse.from(roomUsers.get(roomId));
 
               try {
                 String joinJson = objectMapper.writeValueAsString(joinMessage);
                 String onlineJson = objectMapper.writeValueAsString(onlineUsersPayload);
 
-                // Broadcast the text "Join" alert to EVERYONE ELSE in that specific room
                 Uni<Void> broadcastJoinAlert = sendToRoom(connection, roomId, joinJson);
-                // Broadcast the FRESH USER LIST to EVERYONE in that specific room
                 Uni<Void> broadcastUserList = sendToRoom(connection, roomId, onlineJson);
 
                 return Uni.combine()
@@ -110,7 +106,6 @@ public class ChatSocket {
       if ("TYPING_START".equals(typeStr) || "TYPING_STOP".equals(typeStr)) {
         return sendToRoom(connection, roomId, textContent);
       }
-
       // --- CASE MESSAGE REACTIONS ---
       if ("REACTION".equals(typeStr)) {
         Long messageId = jsonNode.get("messageId").asLong();
@@ -120,8 +115,9 @@ public class ChatSocket {
             .saveReaction(roomId, username, messageId, emoji)
             .chain(
                 result -> {
-                  var responsePayload = MessageUpdateResponse.createReactionUpdate(messageId, emoji, result.reaction(),
-                      result.user());
+                  var responsePayload =
+                      MessageUpdateResponse.createReactionUpdate(
+                          messageId, emoji, result.reaction(), result.user());
 
                   try {
                     String jsonText = objectMapper.writeValueAsString(responsePayload);
@@ -135,9 +131,10 @@ public class ChatSocket {
       // --- CHAT MESSAGES & INLINE REPLIES ---
       var messageType = MessageType.valueOf(typeStr.toUpperCase());
       String finalContent = jsonNode.get("content").asText();
-      Long parentId = jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
-          ? jsonNode.get("replyTo").asLong()
-          : null;
+      Long parentId =
+          jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
+              ? jsonNode.get("replyTo").asLong()
+              : null;
       return roomService
           .saveIncomingMessage(roomId, username, finalContent, messageType, parentId)
           .chain(
@@ -164,7 +161,8 @@ public class ChatSocket {
 
     Set<UserInfo> users = roomUsers.get(roomId);
     if (users != null) {
-      var leavingUser = users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
+      var leavingUser =
+          users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
 
       users.removeIf(u -> username.equals(u.username()));
 
@@ -173,7 +171,8 @@ public class ChatSocket {
         return Uni.createFrom().voidItem();
       }
 
-      var leaveMessage = MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
+      var leaveMessage =
+          MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
       var updatedOnlineUsersPayload = OnlineUsersResponse.from(users);
 
       try {
