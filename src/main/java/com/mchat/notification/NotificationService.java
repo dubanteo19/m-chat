@@ -1,15 +1,23 @@
 package com.mchat.notification;
 
 import java.security.Security;
+import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mchat.model.User;
+import com.mchat.auth.dto.response.UserInfo;
+import com.mchat.model.Message;
+import com.mchat.notification.dto.response.PushRecipientInfo;
+import com.mchat.room.RoomService;
 
-import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,9 +28,17 @@ import nl.martijndwars.webpush.PushService;
 @ApplicationScoped
 public class NotificationService {
 
+    @Inject
+    Executor executor;
     private final PushService pushService;
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    RoomService roomService;
+    private final Map<String, Long> lastNotifiedMap = new ConcurrentHashMap<>();
+
+    private static final long COOLDOWN_MS = Duration.ofMinutes(2).toMillis();
 
     public NotificationService(
             @ConfigProperty(name = "vapid.public.key") String publicKey,
@@ -36,35 +52,66 @@ public class NotificationService {
         this.pushService = new PushService(publicKey, privateKey, subject);
     }
 
-    public Uni<Void> notify(User recipient, String title, String body) {
-        if (recipient.pushSubscription == null || recipient.pushSubscription.endpoint == null) {
-            return Uni.createFrom().voidItem();
+    private void sendPushSync(PushRecipientInfo recipient, String title, String body) {
+        if (recipient.endpoint() == null)
+            return;
+
+        try {
+            Map<String, String> payload = Map.of("title", title, "body", body);
+            System.out.println("Sending push notification to " + recipient.username() + ": " + payload);
+            String json = objectMapper.writeValueAsString(payload);
+
+            var notification = new Notification(
+                    recipient.endpoint(),
+                    recipient.p256dh(),
+                    recipient.auth(),
+                    json);
+            pushService.send(notification, Encoding.AES128GCM);
+        } catch (Exception e) {
+            System.err.println("Error sending push to " + recipient.username() + ": " + e.getMessage());
         }
+    }
 
-        return Uni.createFrom()
-                .item(() -> {
-                    try {
+    public void sendNotificationForMessage(Message savedMessage, String roomId, Set<UserInfo> onlineUsers) {
 
-                        String endpoint = recipient.pushSubscription.endpoint;
-                        String p256dh = recipient.pushSubscription.keys.get("p256dh");
-                        String auth = recipient.pushSubscription.keys.get("auth");
+        Set<String> onlineUsernames = (onlineUsers == null)
+                ? Collections.emptySet()
+                : onlineUsers.stream()
+                        .map(UserInfo::username)
+                        .collect(Collectors.toSet());
+        System.out.println("Online users in room " + roomId + ": " + onlineUsernames);
+        String senderUsername = savedMessage.sender.username;
+        long now = System.currentTimeMillis();
+        roomService.getRoomPushRecipients(roomId)
+                .emitOn(Infrastructure.getDefaultWorkerPool())
+                .subscribe().with(
+                        recipients -> {
+                            System.out.println("Push recipients for room " + roomId + ": " +
+                                    recipients.stream().map(PushRecipientInfo::username).collect(Collectors.toList()));
+                            String title = "New message from " + senderUsername;
+                            String body = savedMessage.content;
 
-                        Map<String, String> payload = Map.of(
-                                "title", title,
-                                "body", body);
-                        String json = objectMapper.writeValueAsString(payload);
+                            recipients.stream()
+                                    .filter(r -> !r.username().equals(senderUsername))
+                                    .filter(r -> !onlineUsernames.contains(r.username()))
+                                    .filter(r -> shouldSendNotification(roomId, r.username(), now))
+                                    .forEach(r -> {
+                                        sendPushSync(r, title, body);
+                                        lastNotifiedMap.put(getCooldownKey(roomId, r.username()), now);
+                                    });
+                        },
+                        failure -> System.err.println("Failed to process notifications: " + failure.getMessage()));
+    }
 
-                        var notification = new Notification(endpoint, p256dh, auth, json);
+    private boolean shouldSendNotification(String roomId, String username, long now) {
+        String key = getCooldownKey(roomId, username);
+        Long lastSent = lastNotifiedMap.get(key);
 
-                        pushService.send(notification, Encoding.AES128GCM);
+        // Allow sending if never notified or cooldown window has passed
+        return lastSent == null || (now - lastSent) > COOLDOWN_MS;
+    }
 
-                    } catch (Exception e) {
-                        System.out.println("Error sending push notification: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    return null;
-                })
-                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
-                .replaceWithVoid();
+    private String getCooldownKey(String roomId, String username) {
+        return roomId + ":" + username;
     }
 }

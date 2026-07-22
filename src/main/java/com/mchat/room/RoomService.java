@@ -6,6 +6,7 @@ import com.mchat.model.MessageType;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
 import com.mchat.model.User;
+import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.dto.request.CreateRoomRequest;
 import com.mchat.room.dto.request.MessagePaginationRequest;
 import com.mchat.room.dto.request.PaginatedMessagesResponse;
@@ -14,6 +15,9 @@ import com.mchat.room.dto.response.ReactionResult;
 import com.mchat.room.dto.response.RoomResponse;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
 import com.mchat.user.UserService;
+
+import io.quarkus.cache.CacheResult;
+import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,10 +26,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @ApplicationScoped
 public class RoomService {
-  @Inject UserService userService;
+  @Inject
+  UserService userService;
 
   @WithTransaction
   public Uni<PaginatedMessagesResponse<MessageResponse>> getRoomMessagesPaginated(
@@ -38,8 +45,7 @@ public class RoomService {
             messages -> {
               boolean hasMore = messages.size() == limit;
               Instant nextCursor = messages.isEmpty() ? null : messages.getLast().sentAt;
-              var responseMessages =
-                  new ArrayList<>(messages.stream().map(MessageResponse::from).toList());
+              var responseMessages = new ArrayList<>(messages.stream().map(MessageResponse::from).toList());
               Collections.reverse(responseMessages);
               return new PaginatedMessagesResponse<>(responseMessages, nextCursor, hasMore);
             });
@@ -60,24 +66,22 @@ public class RoomService {
         .ifNull()
         .failWith(() -> new IllegalArgumentException("Room not found: " + roomId))
         .chain(
-            room ->
-                User.findByUsername(username)
-                    .onItem()
-                    .ifNull()
-                    .failWith(() -> new IllegalArgumentException("User not found: " + username))
-                    .chain(
-                        user -> {
-                          if (parentId != null) {
-                            return Message.<Message>findById(parentId)
-                                .map(
-                                    parentMessage ->
-                                        new Message(
-                                            content, user, messageType, room, parentMessage));
-                          } else {
-                            return Uni.createFrom()
-                                .item(new Message(content, user, messageType, room, null));
-                          }
-                        }))
+            room -> User.findByUsername(username)
+                .onItem()
+                .ifNull()
+                .failWith(() -> new IllegalArgumentException("User not found: " + username))
+                .chain(
+                    user -> {
+                      if (parentId != null) {
+                        return Message.<Message>findById(parentId)
+                            .map(
+                                parentMessage -> new Message(
+                                    content, user, messageType, room, parentMessage));
+                      } else {
+                        return Uni.createFrom()
+                            .item(new Message(content, user, messageType, room, null));
+                      }
+                    }))
         .chain(message -> message.persist());
   }
 
@@ -123,11 +127,10 @@ public class RoomService {
                           message.reactions = new ArrayList<>();
                         }
 
-                        MessageReaction managedReaction =
-                            message.reactions.stream()
-                                .filter(r -> r.user != null && r.user.username.equals(username))
-                                .findFirst()
-                                .orElse(null);
+                        MessageReaction managedReaction = message.reactions.stream()
+                            .filter(r -> r.user != null && r.user.username.equals(username))
+                            .findFirst()
+                            .orElse(null);
 
                         if (managedReaction != null) {
                           if (managedReaction.type.equals(emoji)) {
@@ -176,5 +179,20 @@ public class RoomService {
         .chain(user -> RoomMember.findRoomsByUser(user.id))
         .chain(
             rooms -> Uni.createFrom().item(rooms.stream().map(RoomResponse::fromEntiy).toList()));
+  }
+
+  /**
+   * Caches all members with active push subscriptions for a room.
+   */
+  @CacheResult(cacheName = "room-push-recipients")
+  @WithSession
+  public Uni<List<PushRecipientInfo>> getRoomPushRecipients(String roomId) {
+    return RoomMember.<RoomMember>find("FROM RoomMember rm JOIN FETCH rm.user u WHERE rm.room.id = ?1", roomId)
+        .list()
+        .map(members -> members.stream()
+            .map(m -> m.user)
+            .map(PushRecipientInfo::fromEntity)
+            .filter(Objects::nonNull)
+            .toList());
   }
 }
