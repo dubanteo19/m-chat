@@ -10,6 +10,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 
 @Path("/auth")
@@ -20,6 +21,19 @@ public class AuthResource {
 
   @Inject AuthService authService;
   @Inject PasswordService passwordService;
+
+  @POST
+  @Path("/logout")
+  public Response logout() {
+    NewCookie clearCookie =
+        new NewCookie.Builder("m_user")
+            .value("")
+            .path("/")
+            .maxAge(0) // Expire immediately
+            .build();
+
+    return Response.ok().cookie(clearCookie).build();
+  }
 
   @POST
   @Path("/register")
@@ -43,6 +57,19 @@ public class AuthResource {
   @POST
   @Path("/login")
   public Uni<Response> login(UserLoginRequest request) {
-    return authService.loginUser(request).map(userInfo -> Response.ok(userInfo).build());
+    return authService
+        .loginUser(request)
+        .map(
+            userInfo -> {
+              var authCookie =
+                  new NewCookie.Builder("m_user")
+                      .value(userInfo.username())
+                      .path("/")
+                      .maxAge(60 * 60 * 24 * 7) // 1 week
+                      .httpOnly(false)
+                      .sameSite(NewCookie.SameSite.LAX)
+                      .build();
+              return Response.ok(userInfo).cookie(authCookie).build();
+            });
   }
 }

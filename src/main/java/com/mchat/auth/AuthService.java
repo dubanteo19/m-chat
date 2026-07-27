@@ -16,17 +16,18 @@ public class AuthService {
   @WithTransaction
   public Uni<UserInfo> registerUser(UserRegisterRequest request) {
     return User.findByUsername(request.username())
-        .chain(existingUser -> {
-          if (existingUser != null) {
-            return Uni.createFrom()
-                .failure(new UsernameAlreadyExistsException(request.username()));
-          }
-          var user = new User();
-          user.username = request.username();
-          user.displayName = request.displayName();
-          user.password = request.password();
-          return user.persist().replaceWith(() -> UserInfo.fromEntity(user));
-        });
+        .chain(
+            existingUser -> {
+              if (existingUser != null) {
+                return Uni.createFrom()
+                    .failure(new UsernameAlreadyExistsException(request.username()));
+              }
+              var user = new User();
+              user.username = request.username();
+              user.displayName = request.displayName();
+              user.password = request.password();
+              return user.persist().replaceWith(() -> UserInfo.fromEntity(user));
+            });
   }
 
   @WithTransaction
