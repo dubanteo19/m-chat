@@ -2,6 +2,7 @@ package com.mchat.auth;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
+
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,7 +11,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 
 @Path("/auth")
@@ -19,20 +19,20 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
 
-  @Inject AuthService authService;
-  @Inject PasswordService passwordService;
+  @Inject
+  AuthService authService;
+  @Inject
+  PasswordService passwordService;
 
   @POST
   @Path("/logout")
-  public Response logout() {
-    NewCookie clearCookie =
-        new NewCookie.Builder("m_user")
-            .value("")
-            .path("/")
-            .maxAge(0) // Expire immediately
-            .build();
+  public Uni<Response> logout() {
+    String cookieHeader = "m_user=; Domain=.dbt19.site; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax";
 
-    return Response.ok().cookie(clearCookie).build();
+    return Uni.createFrom()
+        .item(() -> Response.ok()
+            .header("Set-Cookie", cookieHeader)
+            .build());
   }
 
   @POST
@@ -42,15 +42,13 @@ public class AuthResource {
         .hashPassword(request.password())
         .chain(
             hashedPassword -> {
-              var secureRequest =
-                  new UserRegisterRequest(
-                      request.username(), hashedPassword, request.displayName());
+              var secureRequest = new UserRegisterRequest(
+                  request.username(), hashedPassword, request.displayName());
 
               return authService
                   .registerUser(secureRequest)
                   .map(
-                      userInfo ->
-                          Response.status(Response.Status.CREATED).entity(userInfo).build());
+                      userInfo -> Response.status(Response.Status.CREATED).entity(userInfo).build());
             });
   }
 
@@ -61,15 +59,14 @@ public class AuthResource {
         .loginUser(request)
         .map(
             userInfo -> {
-              var authCookie =
-                  new NewCookie.Builder("m_user")
-                      .value(userInfo.username())
-                      .path("/")
-                      .maxAge(60 * 60 * 24 * 7) // 1 week
-                      .httpOnly(false)
-                      .sameSite(NewCookie.SameSite.LAX)
-                      .build();
-              return Response.ok(userInfo).cookie(authCookie).build();
+              String cookieHeader = String.format(
+                  "m_user=%s; Domain=.dbt19.site; Path=/; Max-Age=%d; Secure; HttpOnly; SameSite=Lax",
+                  userInfo.username(),
+                  60 * 60 * 24 * 7);
+
+              return Response.ok(userInfo)
+                  .header("Set-Cookie", cookieHeader)
+                  .build();
             });
   }
 }
