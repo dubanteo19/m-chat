@@ -1,5 +1,11 @@
 package com.mchat.room;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
 import com.mchat.model.Message;
 import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
@@ -22,12 +28,6 @@ import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 @ApplicationScoped
 public class RoomService {
@@ -93,7 +93,6 @@ public class RoomService {
         .failWith(() -> new IllegalArgumentException("Message not found: " + messageId))
         .chain(
             message -> {
-              // Guardrail verification: Ensure user matches sender
               if (!message.sender.username.equals(username)) {
                 return Uni.createFrom()
                     .failure(new SecurityException("Unauthorized context action"));

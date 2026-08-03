@@ -6,6 +6,7 @@ import com.mchat.room.RoomService;
 import com.mchat.user.dto.request.UpdateProfileRequest;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
@@ -38,7 +39,7 @@ public class UserResource {
   @PUT
   @Path("/{username}/profile")
   public Uni<Response> updateProfile(
-      @PathParam("username") String username, UpdateProfileRequest request) {
+      @PathParam("username") String username,@Valid UpdateProfileRequest request) {
     return userService
         .updateProfile(username, request)
         .onItem()
