@@ -36,7 +36,8 @@ public class User extends PanacheEntity {
   @Column(name = "push_subscription")
   public PushSubscription pushSubscription;
 
-  public User() {}
+  public User() {
+  }
 
   public User(
       String username,

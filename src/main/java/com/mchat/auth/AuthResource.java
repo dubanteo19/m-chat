@@ -1,21 +1,25 @@
 package com.mchat.auth;
 
+import java.time.Duration;
 import java.util.logging.Logger;
+
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
 import com.mchat.user.UserService;
 
+import io.smallrye.jwt.build.Jwt;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 
 @Path("/auth")
@@ -23,78 +27,96 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
-    Logger logger = Logger.getLogger(AuthResource.class.getName());
+        Logger logger = Logger.getLogger(AuthResource.class.getName());
 
-    @Inject
-    AuthService authService;
-    @Inject
-    PasswordService passwordService;
-    @Inject
-    UserService userService;
+        @Inject
+        AuthService authService;
+        @Inject
+        PasswordService passwordService;
+        @Inject
+        UserService userService;
+        @Inject
+        JsonWebToken jwt; // Automatically injected by Quarkus per request
 
-    @POST
-    @Path("/logout")
-    public Uni<Response> logout() {
-        String cookieHeader = "m_user=; Domain=.dbt19.site; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax";
+        @POST
+        @Path("/logout")
+        public Uni<Response> logout() {
+                String cookieHeader = "m_user=; Domain=.dbt19.site; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax";
 
-        return Uni.createFrom()
-                .item(() -> Response.ok()
-                        .header("Set-Cookie", cookieHeader)
-                        .build());
-    }
-
-    @POST
-    @Path("/register")
-    public Uni<Response> register(UserRegisterRequest request) {
-        return passwordService
-                .hashPassword(request.password())
-                .chain(
-                        hashedPassword -> {
-                            var secureRequest = new UserRegisterRequest(
-                                    request.username(), hashedPassword, request.displayName());
-
-                            return authService
-                                    .registerUser(secureRequest)
-                                    .map(
-                                            userInfo -> Response.status(Response.Status.CREATED).entity(userInfo)
-                                                    .build());
-                        });
-    }
-
-    @GET
-    @Path("/me")
-    public Uni<Response> me(@CookieParam("m_user") String username) {
-        if (username == null) {
-            logger.warning("No valid session found.");
-            return Uni.createFrom().item(
-                    Response.status(Response.Status.UNAUTHORIZED).build());
+                return Uni.createFrom()
+                                .item(() -> Response.ok()
+                                                .header("Set-Cookie", cookieHeader)
+                                                .build());
         }
 
-        return userService.getUserInfoByUsername(username)
-                .map(userInfo -> {
-                    if (userInfo == null) {
-                        return Response.status(Response.Status.NOT_FOUND).build();
-                    }
-                    logger.info("User info retrieved for username: " + username);
-                    return Response.ok(userInfo).build();
-                });
-    }
+        @POST
+        @Path("/register")
+        public Uni<Response> register(UserRegisterRequest request) {
+                return passwordService
+                                .hashPassword(request.password())
+                                .chain(
+                                                hashedPassword -> {
+                                                        var secureRequest = new UserRegisterRequest(
+                                                                        request.username(), hashedPassword,
+                                                                        request.displayName());
 
-    @POST
-    @Path("/login")
-    public Uni<Response> login(UserLoginRequest request) {
-        return authService
-                .loginUser(request)
-                .map(
-                        userInfo -> {
-                            String cookieHeader = String.format(
-                                    "m_user=%s; Domain=.dbt19.site; Path=/; Max-Age=%d; Secure; HttpOnly; SameSite=Lax",
-                                    userInfo.username(),
-                                    60 * 60 * 24 * 7);
+                                                        return authService
+                                                                        .registerUser(secureRequest)
+                                                                        .map(
+                                                                                        userInfo -> Response.status(
+                                                                                                        Response.Status.CREATED)
+                                                                                                        .entity(userInfo)
+                                                                                                        .build());
+                                                });
+        }
 
-                            return Response.ok(userInfo)
-                                    .header("Set-Cookie", cookieHeader)
-                                    .build();
-                        });
-    }
+        @GET
+        @Path("/me")
+        public Uni<Response> me() {
+                String username = jwt.getName();
+                System.out.println("Authenticated user: " + username);
+                if (username == null) {
+                        logger.warning("No valid session found.");
+                        return Uni.createFrom().item(
+                                        Response.status(Response.Status.UNAUTHORIZED).build());
+                }
+
+                return userService.getUserInfoByUsername(username)
+                                .map(userInfo -> {
+                                        if (userInfo == null) {
+                                                return Response.status(Response.Status.NOT_FOUND).build();
+                                        }
+                                        logger.info("User info retrieved for username: " + username);
+                                        return Response.ok(userInfo).build();
+                                });
+        }
+
+        @POST
+        @Path("/login")
+        public Uni<Response> login(UserLoginRequest request) {
+                return authService.loginUser(request)
+                                .map(userInfo -> {
+                                        // 1. Build a signed token with 30-day expiration
+                                        String signedToken = Jwt.issuer("https://dbt19.site")
+                                                        .upn(userInfo.username())
+                                                        .subject(userInfo.username())
+                                                        .groups("USER")
+                                                        .expiresIn(Duration.ofDays(30))
+                                                        .sign();
+
+                                        NewCookie authCookie = new NewCookie.Builder("m_user")
+                                                        .value(signedToken)
+                                                        .path("/")
+                                                        .maxAge((int) Duration.ofDays(30).toSeconds())
+                                                        .secure(false) // Allow HTTP on localhost
+                                                        .httpOnly(true) // Protect from XSS script access
+                                                        .sameSite(NewCookie.SameSite.LAX)
+                                                        .build();
+
+                                        return Response.ok(userInfo)
+                                                        .cookie(authCookie)
+                                                        .build();
+                                });
+        }
+
 }
