@@ -36,18 +36,7 @@ public class AuthResource {
         @Inject
         UserService userService;
         @Inject
-        JsonWebToken jwt; // Automatically injected by Quarkus per request
-
-        @POST
-        @Path("/logout")
-        public Uni<Response> logout() {
-                String cookieHeader = "m_user=; Domain=.dbt19.site; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax";
-
-                return Uni.createFrom()
-                                .item(() -> Response.ok()
-                                                .header("Set-Cookie", cookieHeader)
-                                                .build());
-        }
+        JsonWebToken jwt;
 
         @POST
         @Path("/register")
@@ -96,7 +85,6 @@ public class AuthResource {
         public Uni<Response> login(UserLoginRequest request) {
                 return authService.loginUser(request)
                                 .map(userInfo -> {
-                                        // 1. Build a signed token with 30-day expiration
                                         String signedToken = Jwt.issuer("https://dbt19.site")
                                                         .upn(userInfo.username())
                                                         .subject(userInfo.username())
@@ -106,10 +94,11 @@ public class AuthResource {
 
                                         NewCookie authCookie = new NewCookie.Builder("m_user")
                                                         .value(signedToken)
+                                                        .domain("dbt19.site")
                                                         .path("/")
                                                         .maxAge((int) Duration.ofDays(30).toSeconds())
-                                                        .secure(false) // Allow HTTP on localhost
-                                                        .httpOnly(true) // Protect from XSS script access
+                                                        .secure(false)
+                                                        .httpOnly(true)
                                                         .sameSite(NewCookie.SameSite.LAX)
                                                         .build();
 
@@ -119,4 +108,21 @@ public class AuthResource {
                                 });
         }
 
+        @POST
+        @Path("/logout")
+        public Uni<Response> logout() {
+                NewCookie authCookie = new NewCookie.Builder("m_user")
+                                .path("/")
+                                .domain("dbt19.site")
+                                .maxAge(0)
+                                .secure(false)
+                                .httpOnly(true)
+                                .sameSite(NewCookie.SameSite.LAX)
+                                .build();
+
+                return Uni.createFrom()
+                                .item(() -> Response.ok()
+                                                .cookie(authCookie)
+                                                .build());
+        }
 }

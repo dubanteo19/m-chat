@@ -1,5 +1,7 @@
 package com.mchat.user;
 
+import org.eclipse.microprofile.jwt.JsonWebToken;
+
 import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.User;
 import com.mchat.model.json.PushSubscription;
@@ -8,10 +10,13 @@ import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
 
 @ApplicationScoped
 public class UserService {
+  @Inject
+  JsonWebToken jwt;
 
   @WithSession
   public Uni<User> findByUsername(String username) {
@@ -27,7 +32,8 @@ public class UserService {
   }
 
   @WithTransaction
-  public Uni<User> updateProfile(String username, UpdateProfileRequest request) {
+  public Uni<User> updateProfile(UpdateProfileRequest request) {
+    String username = jwt.getName();
     return findByUsername(username)
         .invoke(
             user -> {
@@ -48,7 +54,8 @@ public class UserService {
   }
 
   @WithTransaction
-  public Uni<Void> saveSubscription(String username, PushSubscription subscription) {
+  public Uni<Void> saveSubscription(PushSubscription subscription) {
+    String username = jwt.getName();
     return findByUsername(username)
         .invoke(user -> user.pushSubscription = subscription)
         .replaceWithVoid();

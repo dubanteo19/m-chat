@@ -4,6 +4,7 @@ import com.mchat.model.json.PushSubscription;
 import com.mchat.notification.NotificationService;
 import com.mchat.room.RoomService;
 import com.mchat.user.dto.request.UpdateProfileRequest;
+
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -15,17 +16,18 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.jboss.logging.Logger;
 
 @Path("/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class UserResource {
 
-  private static final Logger LOG = Logger.getLogger(UserResource.class);
-  @Inject UserService userService;
-  @Inject NotificationService notificationService;
-  @Inject RoomService roomService;
+  @Inject
+  UserService userService;
+  @Inject
+  NotificationService notificationService;
+  @Inject
+  RoomService roomService;
 
   @GET
   @Path("/{username}/profile")
@@ -37,28 +39,25 @@ public class UserResource {
   }
 
   @PUT
-  @Path("/{username}/profile")
-  public Uni<Response> updateProfile(
-      @PathParam("username") String username,@Valid UpdateProfileRequest request) {
+  @Path("/profile")
+  public Uni<Response> updateProfile(@Valid UpdateProfileRequest request) {
     return userService
-        .updateProfile(username, request)
+        .updateProfile(request)
         .onItem()
         .transform(updatedUser -> Response.ok(updatedUser).build());
   }
 
   @GET
-  @Path("/{username}/rooms")
-  public Uni<Response> getRooms(@PathParam("username") String username) {
-    return roomService.findRoomsByUsername(username).map(rooms -> Response.ok(rooms).build());
+  @Path("/rooms")
+  public Uni<Response> getRooms() {
+    return roomService.findMyRooms().map(rooms -> Response.ok(rooms).build());
   }
 
   @PUT
-  @Path("/{username}/push-subscription")
-  public Uni<Response> saveSubscription(
-      @PathParam("username") String username, PushSubscription subscription) {
-    LOG.info("Saving push subscription for user: " + username);
+  @Path("/push-subscription")
+  public Uni<Response> saveSubscription(PushSubscription subscription) {
     return userService
-        .saveSubscription(username, subscription)
+        .saveSubscription(subscription)
         .replaceWith(Response.noContent().build());
   }
 }

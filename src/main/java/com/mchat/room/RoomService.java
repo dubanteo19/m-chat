@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.eclipse.microprofile.jwt.JsonWebToken;
+
 import com.mchat.model.Message;
 import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
@@ -33,6 +35,8 @@ import jakarta.inject.Inject;
 public class RoomService {
   @Inject
   UserService userService;
+  @Inject
+  JsonWebToken jwt;
 
   @WithTransaction
   public Uni<PaginatedMessagesResponse<MessageResponse>> getRoomMessagesPaginated(
@@ -86,7 +90,8 @@ public class RoomService {
   }
 
   @WithTransaction
-  public Uni<Message> unsendMessage(Long messageId, String username) {
+  public Uni<Message> unsendMessage(Long messageId) {
+    String username = jwt.getName();
     return Message.<Message>findById(messageId)
         .onItem()
         .ifNull()
@@ -159,8 +164,9 @@ public class RoomService {
 
   @WithTransaction
   public Uni<RoomResponse> create(CreateRoomRequest request) {
+    String username = jwt.getName();
     return userService
-        .findByUsername(request.roomMasterUsername())
+        .findByUsername(username)
         .chain(user -> Room.createAndJoin(request.name(), request.description(), user))
         .chain(room -> Uni.createFrom().item(RoomResponse.fromEntiy(room)));
   }
@@ -172,7 +178,8 @@ public class RoomService {
   }
 
   @WithTransaction
-  public Uni<List<RoomResponse>> findRoomsByUsername(String username) {
+  public Uni<List<RoomResponse>> findMyRooms() {
+    String username = jwt.getName();
     return userService
         .findByUsername(username)
         .chain(user -> RoomMember.findRoomsByUser(user.id))

@@ -17,7 +17,8 @@ import org.jboss.logging.Logger;
 public class StorageResource {
   private static final Logger LOG = Logger.getLogger(StorageResource.class);
 
-  @Inject MinioClient minioClient;
+  @Inject
+  MinioClient minioClient;
 
   private static final String BUCKET_NAME = "mchat-public";
   private static final String MINIO_EXTERNAL_URL = "https://minio.dbt19.site";
@@ -33,20 +34,19 @@ public class StorageResource {
     }
     try {
       // Generate a secure PUT URL for direct frontend client uploads
-      String uploadUrl =
-          minioClient.getPresignedObjectUrl(
-              GetPresignedObjectUrlArgs.builder()
-                  .method(Method.PUT)
-                  .bucket(BUCKET_NAME)
-                  .object(filename)
-                  .expiry(5, TimeUnit.MINUTES)
-                  .build());
+      String uploadUrl = minioClient.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.PUT)
+              .bucket(BUCKET_NAME)
+              .object(filename)
+              .expiry(5, TimeUnit.MINUTES)
+              .build());
 
       String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + filename;
       return Response.ok(
-              Map.of(
-                  "uploadUrl", uploadUrl,
-                  "downloadUrl", downloadUrl))
+          Map.of(
+              "uploadUrl", uploadUrl,
+              "downloadUrl", downloadUrl))
           .build();
 
     } catch (Exception e) {

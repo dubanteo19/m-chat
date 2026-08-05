@@ -1,6 +1,7 @@
 package com.mchat.socket;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -16,8 +17,10 @@ import com.mchat.room.RoomService;
 import com.mchat.room.dto.response.MessageResponse;
 import com.mchat.room.dto.response.MessageUpdateResponse;
 import com.mchat.room.dto.response.OnlineUsersResponse;
+import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
 
+import io.minio.messages.Event;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
@@ -42,24 +45,16 @@ public class ChatSocket {
   ObjectMapper objectMapper;
   @Inject
   UserService userService;
+  @Inject
+  ChatBroadcaster chatBroadcaster;
+
+  private static final Set<EventType> FORWARDABLE_EVENTS = EnumSet.of(
+      EventType.TYPING_START,
+      EventType.TYPING_STOP,
+      EventType.ROOM_EFFECT);
 
   public Set<UserInfo> getOnlineUsers(String roomId) {
     return roomUsers.getOrDefault(roomId, Collections.emptySet());
-  }
-
-  public static <M> Uni<Void> sendToRoom(WebSocketConnection connection, String roomId, M payload) {
-    return connection
-        .broadcast()
-        .filter(c -> roomId.equals(c.pathParam("roomId")))
-        .sendText(payload);
-  }
-
-  public static Uni<Void> sendToRoom(
-      WebSocketConnection connection, String roomId, String payload) {
-    return connection
-        .broadcast()
-        .filter(c -> roomId.equals(c.pathParam("roomId")))
-        .sendText(payload);
   }
 
   @OnOpen
@@ -85,8 +80,8 @@ public class ChatSocket {
                 String joinJson = objectMapper.writeValueAsString(joinMessage);
                 String onlineJson = objectMapper.writeValueAsString(onlineUsersPayload);
 
-                Uni<Void> broadcastJoinAlert = sendToRoom(connection, roomId, joinJson);
-                Uni<Void> broadcastUserList = sendToRoom(connection, roomId, onlineJson);
+                Uni<Void> broadcastJoinAlert = chatBroadcaster.sendToRoom(roomId, joinJson);
+                Uni<Void> broadcastUserList = chatBroadcaster.sendToRoom(roomId, onlineJson);
 
                 return Uni.combine()
                     .all()
@@ -100,25 +95,26 @@ public class ChatSocket {
   }
 
   @OnTextMessage(broadcast = true)
-  public Uni<Void> onMessage(String textContent) {
+  public Uni<Void> onMessage(String payload) {
     String username = connection.pathParam("username");
     String roomId = connection.pathParam("roomId");
 
     try {
-      var jsonNode = objectMapper.readTree(textContent);
+      var jsonNode = objectMapper.readTree(payload);
 
-      String typeStr = jsonNode.get("type").asText();
+      var eventType = EventType.valueOf(jsonNode.get("eventType").asText().toUpperCase());
 
       // --- TYPING STATUS INDICATORS ---
-      if ("PING".equals(typeStr)) {
+      if (EventType.PING.equals(eventType)) {
         return Uni.createFrom().voidItem();
       }
-      // --- TYPING STATUS INDICATORS ---
-      if ("TYPING_START".equals(typeStr) || "TYPING_STOP".equals(typeStr)) {
-        return sendToRoom(connection, roomId, textContent);
+      // --- FORWARDABLE EVENTS ---
+      if (FORWARDABLE_EVENTS.contains(eventType)) {
+        LOG.info("Forwarding event " + eventType + " from user " + username + " in room " + roomId);
+        return chatBroadcaster.sendToRoom(roomId, payload);
       }
       // --- CASE MESSAGE REACTIONS ---
-      if ("REACTION".equals(typeStr)) {
+      if (EventType.REACTION.equals(eventType)) {
         Long messageId = jsonNode.get("messageId").asLong();
         String emoji = jsonNode.get("content").asText();
 
@@ -131,7 +127,7 @@ public class ChatSocket {
 
                   try {
                     String jsonText = objectMapper.writeValueAsString(responsePayload);
-                    return sendToRoom(connection, roomId, jsonText);
+                    return chatBroadcaster.sendToRoom(roomId, jsonText);
                   } catch (JsonProcessingException e) {
                     return Uni.createFrom().failure(e);
                   }
@@ -139,7 +135,7 @@ public class ChatSocket {
       }
 
       // --- CHAT MESSAGES & INLINE REPLIES ---
-      var messageType = MessageType.valueOf(typeStr.toUpperCase());
+      var messageType = MessageType.valueOf(jsonNode.get("type").asText().toUpperCase());
       String finalContent = jsonNode.get("content").asText();
       Long parentId = jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
           ? jsonNode.get("replyTo").asLong()
@@ -154,15 +150,15 @@ public class ChatSocket {
                 // Fire-and-forget
                 notificationService.sendNotificationForMessage(savedMessage, roomId, onlineUsers);
 
-                return sendToRoom(connection, roomId, MessageResponse.from(savedMessage));
+                return chatBroadcaster.sendToRoom(roomId, MessageResponse.from(savedMessage));
               });
 
     } catch (Exception e) {
 
       return roomService
-          .saveIncomingMessage(roomId, username, textContent, MessageType.TEXT, null)
+          .saveIncomingMessage(roomId, username, payload, MessageType.TEXT, null)
           .chain(
-              savedMessage -> sendToRoom(connection, roomId, MessageResponse.from(savedMessage)));
+              savedMessage -> chatBroadcaster.sendToRoom(roomId, MessageResponse.from(savedMessage)));
     }
   }
 
@@ -194,9 +190,9 @@ public class ChatSocket {
         String leaveJson = objectMapper.writeValueAsString(leaveMessage);
         String onlineJson = objectMapper.writeValueAsString(updatedOnlineUsersPayload);
 
-        Uni<Void> broadcastLeaveAlert = sendToRoom(connection, roomId, leaveJson);
+        Uni<Void> broadcastLeaveAlert = chatBroadcaster.sendToRoom(roomId, leaveJson);
 
-        Uni<Void> broadcastUpdatedList = sendToRoom(connection, roomId, onlineJson);
+        Uni<Void> broadcastUpdatedList = chatBroadcaster.sendToRoom(roomId, onlineJson);
 
         return Uni.combine().all().unis(broadcastLeaveAlert, broadcastUpdatedList).discardItems();
 
