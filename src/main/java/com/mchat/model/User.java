@@ -8,6 +8,9 @@ import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+
+import java.util.List;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -56,6 +59,14 @@ public class User extends PanacheEntity {
 
   public static Uni<User> findByUsername(String username) {
     return find("username", username).firstResult();
+  }
+
+  public static Uni<List<User>> searchByDisplayName(String displayName) {
+    return find(
+        "displayName ILIKE ?1",
+        "%" + displayName + "%")
+        .page(0, 20)
+        .list();
   }
 
   public void setAndHashPassword(String plainPassword) {

@@ -12,7 +12,8 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 public class RoomMemberResource {
 
-  @Inject RoomMemberService roomMemberService;
+  @Inject
+  RoomMemberService roomMemberService;
 
   @POST
   public Uni<Response> inviteUser(@PathParam("roomId") String roomId, InviteMemberRequest request) {
@@ -25,11 +26,10 @@ public class RoomMemberResource {
   @Path("/{username}")
   public Uni<Response> kickUser(
       @PathParam("roomId") String roomId,
-      @PathParam("username") String targetUsername,
-      @HeaderParam("X-Username") String actorUsername) {
+      @PathParam("username") String targetUsername) {
 
     return roomMemberService
-        .kickUser(roomId, targetUsername, actorUsername)
+        .kickUser(roomId, targetUsername)
         .map(ignored -> Response.noContent().build());
   }
 }

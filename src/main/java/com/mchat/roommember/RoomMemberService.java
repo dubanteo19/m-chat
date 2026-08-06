@@ -13,10 +13,16 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 import java.util.List;
 
+import org.eclipse.microprofile.jwt.JsonWebToken;
+
 @ApplicationScoped
 public class RoomMemberService {
-  @Inject RoomService roomService;
-  @Inject UserService userService;
+  @Inject
+  RoomService roomService;
+  @Inject
+  UserService userService;
+  @Inject
+  JsonWebToken jwt;
 
   @WithTransaction
   public Uni<List<UserInfo>> findMembersByRoom(String roomId) {
@@ -36,17 +42,17 @@ public class RoomMemberService {
     return userService
         .findByUsername(username)
         .chain(
-            user ->
-                RoomMember.findMember(roomId, user.id)
-                    .onItem()
-                    .ifNotNull()
-                    .failWith(() -> new IllegalArgumentException("User already in room"))
-                    .chain(ignored -> roomService.findRoomById(roomId))
-                    .chain(room -> new RoomMember(room, user, RoomRole.MEMBER).persist()));
+            user -> RoomMember.findMember(roomId, user.id)
+                .onItem()
+                .ifNotNull()
+                .failWith(() -> new IllegalArgumentException("User already in room"))
+                .chain(ignored -> roomService.findRoomById(roomId))
+                .chain(room -> new RoomMember(room, user, RoomRole.MEMBER).persist()));
   }
 
   @WithTransaction
-  public Uni<Boolean> kickUser(String roomId, String targetUsername, String actorUsername) {
+  public Uni<Boolean> kickUser(String roomId, String targetUsername) {
+    String actorUsername = jwt.getName();
     return userService
         .findByUsername(actorUsername)
         .chain(actorUser -> findMember(roomId, actorUser.id))

@@ -14,6 +14,7 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -28,6 +29,15 @@ public class UserResource {
   NotificationService notificationService;
   @Inject
   RoomService roomService;
+
+  @GET
+  public Uni<Response> searchUsers(
+      @QueryParam("q") String displayName) {
+    return userService
+        .searchUsersByDisplayName(displayName)
+        .onItem()
+        .transform(users -> Response.ok(users).build());
+  }
 
   @GET
   @Path("/{username}/profile")

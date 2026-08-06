@@ -43,7 +43,7 @@ public class RoomMember extends PanacheEntity {
   }
 
   public static Uni<RoomMember> findMember(String roomId, Long userId) {
-    return find("room_id = ?1 and user_id = ?2", roomId, userId).firstResult();
+    return find("room.id = ?1 and user.id = ?2", roomId, userId).firstResult();
   }
 
   public static Uni<List<RoomMember>> findMembersByRoom(String roomId) {

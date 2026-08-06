@@ -1,5 +1,7 @@
 package com.mchat.user;
 
+import java.util.List;
+
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.auth.dto.response.UserInfo;
@@ -24,6 +26,11 @@ public class UserService {
         .onItem()
         .ifNull()
         .failWith(() -> new NotFoundException("User not found"));
+  }
+  @WithTransaction
+  public Uni<List<UserInfo>> searchUsersByDisplayName(String displayName) {
+    return User.searchByDisplayName(displayName)
+        .map(users -> users.stream().map(UserInfo::fromEntity).toList());
   }
 
   @WithTransaction
