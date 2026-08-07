@@ -15,9 +15,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(
-    name = "room_members",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "user_id"}))
+@Table(name = "room_members", uniqueConstraints = @UniqueConstraint(columnNames = { "room_id", "user_id" }))
 public class RoomMember extends PanacheEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "room_id", nullable = false)
@@ -33,7 +31,8 @@ public class RoomMember extends PanacheEntity {
 
   public Instant joinedAt;
 
-  public RoomMember() {}
+  public RoomMember() {
+  }
 
   public RoomMember(Room room, User user, RoomRole role) {
     this.room = room;
@@ -48,14 +47,8 @@ public class RoomMember extends PanacheEntity {
 
   public static Uni<List<RoomMember>> findMembersByRoom(String roomId) {
     return RoomMember.<RoomMember>find(
-            "from RoomMember rm join fetch rm.user where rm.room.id = ?1", roomId)
+        "from RoomMember rm join fetch rm.user where rm.room.id = ?1", roomId)
         .list();
   }
 
-  public static Uni<List<Room>> findRoomsByUser(Long userId) {
-    return RoomMember.<RoomMember>find(
-            "from RoomMember rm join fetch rm.room where rm.user.id = ?1", userId)
-        .list()
-        .map(members -> members.stream().map(member -> member.room).toList());
-  }
 }

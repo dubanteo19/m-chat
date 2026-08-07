@@ -41,6 +41,11 @@ public class RoomResource {
   }
 
   @DELETE
+  public Uni<Response> delete(@PathParam("roomId") String roomId) {
+    return roomService.delete(roomId).map(payload -> Response.status(Response.Status.NO_CONTENT).build());
+  }
+
+  @DELETE
   @Path("/{roomId}/messages/{messageId}")
   public Uni<Response> deleteMessage(@PathParam("roomId") String roomId,
       @PathParam("messageId") Long messageId) {

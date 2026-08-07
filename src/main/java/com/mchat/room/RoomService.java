@@ -13,6 +13,7 @@ import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
+import com.mchat.model.RoomRole;
 import com.mchat.model.User;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.dto.request.CreateRoomRequest;
@@ -30,6 +31,8 @@ import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
 @ApplicationScoped
 public class RoomService {
@@ -172,6 +175,29 @@ public class RoomService {
   }
 
   @WithTransaction
+  public Uni<Boolean> delete(String roomId) {
+    String username = jwt.getName();
+
+    return userService.findByUsername(username)
+        .chain(user -> {
+          if (user == null) {
+            throw new WebApplicationException("User not found", Response.Status.UNAUTHORIZED);
+          }
+
+          return RoomMember.<RoomMember>find("room.id = ?1 and user.id = ?2", roomId, user.id)
+              .firstResult()
+              .chain(member -> {
+                if (member == null || member.role != RoomRole.MASTER) {
+                  throw new WebApplicationException("Only the room master can delete this room",
+                      Response.Status.FORBIDDEN);
+                }
+
+                return Room.softDeleteRoom(roomId);
+              });
+        });
+  }
+
+  @WithTransaction
   public Uni<List<RoomMemberInfo>> getRoomMembers(String roomId) {
     return RoomMember.findMembersByRoom(roomId)
         .map(members -> members.stream().map(RoomMemberInfo::fromEntity).toList());
@@ -182,7 +208,7 @@ public class RoomService {
     String username = jwt.getName();
     return userService
         .findByUsername(username)
-        .chain(user -> RoomMember.findRoomsByUser(user.id))
+        .chain(user -> Room.findRoomsByUser(user.id))
         .chain(
             rooms -> Uni.createFrom().item(rooms.stream().map(RoomResponse::fromEntiy).toList()));
   }
