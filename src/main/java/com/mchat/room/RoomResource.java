@@ -35,6 +35,13 @@ public class RoomResource {
   @Inject
   JsonWebToken jwt;
 
+  @GET
+  @Path("/{roomId}")
+  public Uni<Response> getRoomInfo(
+      @PathParam("roomId") String roomId) {
+    return roomService.getRoomInfo(roomId).map(payload -> Response.ok(payload).build());
+  }
+
   @POST
   public Uni<Response> create(CreateRoomRequest request) {
     return roomService.create(request).map(payload -> Response.ok(payload).build());
@@ -67,9 +74,9 @@ public class RoomResource {
   @GET
   @Path("/{roomId}/messages")
   public Uni<Response> getRoomMessages(
-      @PathParam("roomId") String room, @BeanParam MessagePaginationRequest pagination) {
+      @PathParam("roomId") String roomId, @BeanParam MessagePaginationRequest pagination) {
     return roomService
-        .getRoomMessagesPaginated(room, pagination)
+        .getRoomMessagesPaginated(roomId, pagination)
         .map(payload -> Response.ok(payload).build());
   }
 }

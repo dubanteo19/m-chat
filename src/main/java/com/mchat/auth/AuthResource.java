@@ -7,6 +7,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
+import com.mchat.user.UserDbService;
 import com.mchat.user.UserService;
 
 import io.smallrye.jwt.build.Jwt;
@@ -63,7 +64,6 @@ public class AuthResource {
         @Path("/me")
         public Uni<Response> me() {
                 String username = jwt.getName();
-                System.out.println("Authenticated user: " + username);
                 if (username == null) {
                         logger.warning("No valid session found.");
                         return Uni.createFrom().item(

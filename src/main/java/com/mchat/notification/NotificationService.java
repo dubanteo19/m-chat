@@ -86,8 +86,6 @@ public class NotificationService {
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe().with(
                         recipients -> {
-                            System.out.println("Push recipients for room " + roomId + ": " +
-                                    recipients.stream().map(PushRecipientInfo::username).collect(Collectors.toList()));
                             String title = "New message from " + senderUsername;
                             String body = savedMessage.content;
 

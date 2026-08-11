@@ -1,70 +1,59 @@
 package com.mchat.user;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.auth.dto.response.UserInfo;
+import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.User;
 import com.mchat.model.json.PushSubscription;
 import com.mchat.user.dto.request.UpdateProfileRequest;
-import io.quarkus.hibernate.reactive.panache.common.WithSession;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.cache.Cache;
+import io.quarkus.cache.CacheName;
+import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotFoundException;
 
 @ApplicationScoped
 public class UserService {
+  Logger logger = Logger.getLogger(UserService.class.getName());
   @Inject
   JsonWebToken jwt;
 
-  @WithSession
-  public Uni<User> findByUsername(String username) {
-    return User.findByUsername(username)
-        .onItem()
-        .ifNull()
-        .failWith(() -> new NotFoundException("User not found"));
-  }
-  @WithTransaction
+  @Inject
+  UserDbService userDbService;
+
+  @Inject
+  @CacheName(CacheConstants.USER_INFO_BY_USERNAME)
+  Cache userInfoCache;
+
   public Uni<List<UserInfo>> searchUsersByDisplayName(String displayName) {
-    return User.searchByDisplayName(displayName)
-        .map(users -> users.stream().map(UserInfo::fromEntity).toList());
+    return userDbService.searchUsersByDisplayName(displayName);
   }
 
-  @WithTransaction
+  public Uni<User> findByUsername(String username) {
+    return userDbService.findByUsername(username);
+  }
+
+  @CacheResult(cacheName = CacheConstants.USER_INFO_BY_USERNAME)
   public Uni<UserInfo> getUserInfoByUsername(String username) {
-    return findByUsername(username).map(userEntity -> UserInfo.fromEntity(userEntity));
+    logger.info("CACHE MISS! Fetching from DB layer for username: " + username);
+    return userDbService.findByUsername(username).map(UserInfo::fromEntity);
   }
 
-  @WithTransaction
   public Uni<User> updateProfile(UpdateProfileRequest request) {
     String username = jwt.getName();
-    return findByUsername(username)
-        .invoke(
-            user -> {
-              if (request.displayName != null && !request.displayName.isBlank()) {
-                user.displayName = request.displayName;
-              }
-              if (request.title != null) {
-                user.title = request.title;
-              }
-              if (request.avatarUrl != null) {
-                user.avatarUrl = request.avatarUrl;
-              }
 
-              if (request.titleStyle != null) {
-                user.titleStyle = request.titleStyle;
-              }
-            });
+    return userDbService.updateProfile(request, username)
+        .call(updatedUserInfo -> userInfoCache.invalidate(username));
   }
 
-  @WithTransaction
   public Uni<Void> saveSubscription(PushSubscription subscription) {
     String username = jwt.getName();
-    return findByUsername(username)
-        .invoke(user -> user.pushSubscription = subscription)
-        .replaceWithVoid();
+    return userDbService.saveSubscription(username, subscription);
   }
+
 }
