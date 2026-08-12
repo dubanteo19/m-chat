@@ -7,13 +7,11 @@ import com.mchat.socket.dto.EventType;
 public record MessageDeleteResponse(
         EventType eventType,
         Long messageId,
-        String deletedBy,
         String deletedAt) {
-    public static MessageDeleteResponse create(Long messageId, String username) {
+    public static MessageDeleteResponse create(Long messageId) {
         return new MessageDeleteResponse(
                 EventType.MESSAGE_DELETE,
                 messageId,
-                username,
                 Instant.now().toString());
     }
 }

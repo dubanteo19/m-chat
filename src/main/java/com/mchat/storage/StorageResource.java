@@ -1,19 +1,20 @@
 package com.mchat.storage;
 
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.jboss.logging.Logger;
+
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import org.jboss.logging.Logger;
 
 @Path("/storage")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class StorageResource {
   private static final Logger LOG = Logger.getLogger(StorageResource.class);
 

@@ -7,26 +7,20 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
-import com.mchat.user.UserDbService;
 import com.mchat.user.UserService;
 
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.mutiny.Uni;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 
 @Path("/auth")
-@ApplicationScoped
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
+@RequestScoped
 public class AuthResource {
         Logger logger = Logger.getLogger(AuthResource.class.getName());
 
@@ -87,7 +81,8 @@ public class AuthResource {
                                 .map(userInfo -> {
                                         String signedToken = Jwt.issuer("https://dbt19.site")
                                                         .upn(userInfo.username())
-                                                        .subject(userInfo.username())
+                                                        .subject(String.valueOf(userInfo.id()))
+                                                        .claim("userId", userInfo.id())
                                                         .groups("USER")
                                                         .expiresIn(Duration.ofDays(30))
                                                         .sign();

@@ -19,14 +19,13 @@ public class RoomMemberService {
   JsonWebToken jwt;
 
   @CacheInvalidate(cacheName = CacheConstants.ROOM_MEMBERS)
-  public Uni<RoomMember> inviteUser(@CacheKey String roomId, String username) {
-    return roomMemberDbService.inviteUser(roomId, username);
+  public Uni<RoomMember> inviteUser(Long actorId, @CacheKey String roomId, String username) {
+    return roomMemberDbService.inviteUser(actorId, roomId, username);
   }
 
   @CacheInvalidate(cacheName = CacheConstants.ROOM_MEMBERS)
-  public Uni<Boolean> kickUser(@CacheKey String roomId, String targetUsername) {
-    String actorUsername = jwt.getName();
-    return roomMemberDbService.kickUser(actorUsername, targetUsername, roomId);
+  public Uni<Boolean> kickUser(Long actorId, @CacheKey String roomId, String targetUsername) {
+    return roomMemberDbService.kickUser(actorId, targetUsername, roomId);
   }
 
 }

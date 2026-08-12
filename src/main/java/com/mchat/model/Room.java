@@ -21,14 +21,15 @@ public class Room extends PanacheEntityBase {
   public boolean deleted = false;
   public Instant deletedAt;
 
-  public static Uni<Room> createAndJoin(String name, String description, User creator) {
+  public static Uni<Room> createAndJoin(String name, String description, Long creatorId) {
     var room = Room.create(name, description);
+
     return room.<Room>persist()
-        .chain(
-            savedRoom -> {
-              var master = new RoomMember(savedRoom, creator, RoomRole.MASTER);
-              return master.persist().replaceWith(savedRoom);
-            });
+        .chain(savedRoom -> {
+          User userProxy = new User(creatorId);
+          var master = new RoomMember(savedRoom, userProxy, RoomRole.MASTER);
+          return master.persist().replaceWith(savedRoom);
+        });
   }
 
   // --- Soft Delete Method ---

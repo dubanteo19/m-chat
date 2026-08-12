@@ -64,8 +64,8 @@ public class RoomDbService {
     }
 
     @WithTransaction
-    public Uni<Room> createAndJoinRoom(String name, String description, User user) {
-        return Room.createAndJoin(name, description, user);
+    public Uni<Room> createAndJoinRoom(String name, String description, Long creatorId) {
+        return Room.createAndJoin(name, description, creatorId);
     }
 
     @WithTransaction

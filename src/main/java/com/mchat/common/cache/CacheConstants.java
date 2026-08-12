@@ -6,7 +6,8 @@ public final class CacheConstants {
     private CacheConstants() {
     }
 
-    public static final String USER_INFO_BY_USERNAME = "user-info-by-username";
+    public static final String USER_INFO_BY_ID = "user-info-by-id";
     public static final String ROOM_MEMBERS = "room-members";
+    public static final String ROOM_INFO = "room-info";
     public static final String ROOM_PUSH_RECIPIENTS = "room-push-recipients";
 }

@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
+import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.Message;
 import com.mchat.model.MessageReaction;
 import com.mchat.model.MessageType;
@@ -25,11 +26,12 @@ import com.mchat.roommember.dto.response.RoomMemberInfo;
 import com.mchat.user.UserService;
 
 import io.quarkus.cache.CacheResult;
-import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
@@ -58,21 +60,29 @@ public class RoomService {
         });
   }
 
-  public Uni<Room> getRoomInfo(String roomId) {
+  public Uni<RoomInfo> getRoomInfo(Long userId, String roomId) {
+    return roomDbService.findMember(roomId, userId)
+        .onItem().ifNull().failWith(() -> new ForbiddenException("User is not a member of the room: " + roomId))
+        .chain(member -> fetchRoomInfoCached(roomId));
+  }
+
+  @CacheResult(cacheName = CacheConstants.ROOM_INFO)
+  public Uni<RoomInfo> fetchRoomInfoCached(String roomId) {
     return roomDbService.findRoomById(roomId)
-        .onItem().ifNull().failWith(() -> new IllegalArgumentException("Room not found: " + roomId));
+        .onItem().ifNull().failWith(() -> new NotFoundException("Room not found: " + roomId))
+        .map(RoomInfo::fromEntity);
   }
 
   public Uni<Room> findRoomById(String roomId) {
     return roomDbService.findRoomById(roomId)
-        .onItem().ifNull().failWith(() -> new IllegalArgumentException("Room not found: " + roomId));
+        .onItem().ifNull().failWith(() -> new NotFoundException("Room not found: " + roomId));
   }
 
   public Uni<Message> saveIncomingMessage(
       String roomId, String username, String content, MessageType messageType, Long parentId) {
     return findRoomById(roomId)
         .chain(room -> userService.findByUsername(username)
-            .onItem().ifNull().failWith(() -> new IllegalArgumentException("User not found: " + username))
+            .onItem().ifNull().failWith(() -> new NotFoundException("User not found: " + username))
             .chain(user -> {
               if (parentId != null) {
                 return roomDbService.findMessageById(parentId)
@@ -84,12 +94,12 @@ public class RoomService {
         .chain(message -> roomDbService.persistMessage(message));
   }
 
-  public Uni<Message> unsendMessage(Long messageId) {
-    String username = jwt.getName();
+  @WithTransaction
+  public Uni<Message> unsendMessage(Long userId, Long messageId) {
     return roomDbService.findMessageById(messageId)
         .onItem().ifNull().failWith(() -> new IllegalArgumentException("Message not found: " + messageId))
         .chain(message -> {
-          if (!message.sender.username.equals(username)) {
+          if (!message.sender.id.equals(userId)) {
             return Uni.createFrom().failure(new SecurityException("Unauthorized context action"));
           }
           message.isDeleted = true;
@@ -139,32 +149,21 @@ public class RoomService {
         });
   }
 
-  public Uni<RoomInfo> create(CreateRoomRequest request) {
-    String username = jwt.getName();
-    return userService.findByUsername(username)
-        .chain(user -> roomDbService.createAndJoinRoom(request.name(), request.description(), user))
+  public Uni<RoomInfo> create(Long userId, CreateRoomRequest request) {
+    return roomDbService.createAndJoinRoom(request.name(), request.description(), userId)
         .map(RoomInfo::fromEntity);
   }
 
-  public Uni<Boolean> delete(String roomId) {
-    String username = jwt.getName();
-
-    return userService.findByUsername(username)
-        .chain(user -> {
-          if (user == null) {
-            throw new WebApplicationException("User not found", Response.Status.UNAUTHORIZED);
+  public Uni<Boolean> delete(Long userId, String roomId) {
+    return roomDbService.findMember(roomId, userId)
+        .chain(member -> {
+          if (member == null || member.role != RoomRole.MASTER) {
+            throw new WebApplicationException("Only the room master can delete this room",
+                Response.Status.FORBIDDEN);
           }
-
-          return roomDbService.findMember(roomId, user.id)
-              .chain(member -> {
-                if (member == null || member.role != RoomRole.MASTER) {
-                  throw new WebApplicationException("Only the room master can delete this room",
-                      Response.Status.FORBIDDEN);
-                }
-                return roomDbService.softDeleteRoom(roomId);
-              });
+          return roomDbService.softDeleteRoom(roomId);
         });
-  }
+  };
 
   @CacheResult(cacheName = "room-members")
   public Uni<List<RoomMemberInfo>> getRoomMembers(String roomId) {
@@ -173,10 +172,8 @@ public class RoomService {
         .map(members -> members.stream().map(RoomMemberInfo::fromEntity).toList());
   }
 
-  public Uni<List<RoomInfo>> findMyRooms() {
-    String username = jwt.getName();
-    return userService.findByUsername(username)
-        .chain(user -> roomDbService.findRoomsByUserId(user.id))
+  public Uni<List<RoomInfo>> findMyRooms(Long userId) {
+    return roomDbService.findRoomsByUserId(userId)
         .map(rooms -> rooms.stream().map(RoomInfo::fromEntity).toList());
   }
 

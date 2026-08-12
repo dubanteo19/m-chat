@@ -20,14 +20,12 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class UserService {
   Logger logger = Logger.getLogger(UserService.class.getName());
-  @Inject
-  JsonWebToken jwt;
 
   @Inject
   UserDbService userDbService;
 
   @Inject
-  @CacheName(CacheConstants.USER_INFO_BY_USERNAME)
+  @CacheName(CacheConstants.USER_INFO_BY_ID)
   Cache userInfoCache;
 
   public Uni<List<UserInfo>> searchUsersByDisplayName(String displayName) {
@@ -38,22 +36,24 @@ public class UserService {
     return userDbService.findByUsername(username);
   }
 
-  @CacheResult(cacheName = CacheConstants.USER_INFO_BY_USERNAME)
   public Uni<UserInfo> getUserInfoByUsername(String username) {
-    logger.info("CACHE MISS! Fetching from DB layer for username: " + username);
-    return userDbService.findByUsername(username).map(UserInfo::fromEntity);
+    return userDbService.findIdByUsername(username)
+        .chain(userId -> getUserInfoById(userId));
   }
 
-  public Uni<User> updateProfile(UpdateProfileRequest request) {
-    String username = jwt.getName();
-
-    return userDbService.updateProfile(request, username)
-        .call(updatedUserInfo -> userInfoCache.invalidate(username));
+  @CacheResult(cacheName = CacheConstants.USER_INFO_BY_ID)
+  public Uni<UserInfo> getUserInfoById(Long userId) {
+    logger.info("CACHE MISS! Fetching from DB layer for userId: " + userId);
+    return userDbService.findById(userId).map(UserInfo::fromEntity);
   }
 
-  public Uni<Void> saveSubscription(PushSubscription subscription) {
-    String username = jwt.getName();
-    return userDbService.saveSubscription(username, subscription);
+  public Uni<User> updateProfile(Long userId, UpdateProfileRequest request) {
+    return userDbService.updateProfile(request, userId)
+        .call(updatedUserInfo -> userInfoCache.invalidate(userId));
+  }
+
+  public Uni<Void> saveSubscription(Long userId, PushSubscription subscription) {
+    return userDbService.saveSubscription(userId, subscription);
   }
 
 }

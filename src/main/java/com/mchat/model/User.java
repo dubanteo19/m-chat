@@ -42,6 +42,10 @@ public class User extends PanacheEntity {
   public User() {
   }
 
+  public User(Long id) {
+    this.id = id;
+  }
+
   public User(
       String username,
       String password,
@@ -59,6 +63,10 @@ public class User extends PanacheEntity {
 
   public static Uni<User> findByUsername(String username) {
     return find("username", username).firstResult();
+  }
+
+  public static Uni<User> findById(Long userId) {
+    return find("id", userId).firstResult();
   }
 
   public static Uni<List<User>> searchByDisplayName(String displayName) {

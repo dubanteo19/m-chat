@@ -1,8 +1,6 @@
 
 package com.mchat.roommember;
 
-import org.eclipse.microprofile.jwt.JsonWebToken;
-
 import com.mchat.model.RoomMember;
 import com.mchat.model.RoomRole;
 import com.mchat.room.RoomService;
@@ -31,7 +29,7 @@ public class RoomMemberDbService {
     }
 
     @WithTransaction
-    public Uni<RoomMember> inviteUser(String roomId, String username) {
+    public Uni<RoomMember> inviteUser(Long actorId, String roomId, String username) {
         return userService
                 .findByUsername(username)
                 .chain(
@@ -44,10 +42,8 @@ public class RoomMemberDbService {
     }
 
     @WithTransaction
-    public Uni<Boolean> kickUser(String actorUsername, String targetUsername, String roomId) {
-        return userService
-                .findByUsername(actorUsername)
-                .chain(actorUser -> findMember(roomId, actorUser.id))
+    public Uni<Boolean> kickUser(Long actorId, String targetUsername, String roomId) {
+        return findMember(roomId, actorId)
                 .chain(
                         actor -> {
                             if (actor.role != RoomRole.MASTER) {

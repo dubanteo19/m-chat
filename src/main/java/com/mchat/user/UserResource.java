@@ -1,26 +1,25 @@
 package com.mchat.user;
 
+import org.eclipse.microprofile.jwt.Claim;
+
 import com.mchat.model.json.PushSubscription;
 import com.mchat.notification.NotificationService;
 import com.mchat.room.RoomService;
 import com.mchat.user.dto.request.UpdateProfileRequest;
 
 import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 @Path("/users")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
+@RequestScoped
 public class UserResource {
 
   @Inject
@@ -29,6 +28,10 @@ public class UserResource {
   NotificationService notificationService;
   @Inject
   RoomService roomService;
+
+  @Inject
+  @Claim("userId")
+  Long currentUserId;
 
   @GET
   public Uni<Response> searchUsers(
@@ -52,7 +55,7 @@ public class UserResource {
   @Path("/profile")
   public Uni<Response> updateProfile(@Valid UpdateProfileRequest request) {
     return userService
-        .updateProfile(request)
+        .updateProfile(currentUserId, request)
         .onItem()
         .transform(updatedUser -> Response.ok(updatedUser).build());
   }
@@ -60,14 +63,14 @@ public class UserResource {
   @GET
   @Path("/rooms")
   public Uni<Response> getRooms() {
-    return roomService.findMyRooms().map(rooms -> Response.ok(rooms).build());
+    return roomService.findMyRooms(currentUserId).map(rooms -> Response.ok(rooms).build());
   }
 
   @PUT
   @Path("/push-subscription")
   public Uni<Response> saveSubscription(PushSubscription subscription) {
     return userService
-        .saveSubscription(subscription)
+        .saveSubscription(currentUserId, subscription)
         .replaceWith(Response.noContent().build());
   }
 }

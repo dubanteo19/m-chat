@@ -20,7 +20,6 @@ import com.mchat.room.dto.response.OnlineUsersResponse;
 import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
 
-import io.minio.messages.Event;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;

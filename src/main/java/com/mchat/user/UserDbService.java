@@ -25,9 +25,24 @@ public class UserDbService {
                 .failWith(() -> new NotFoundException("User not found"));
     }
 
+    @WithSession
+    public Uni<User> findById(Long userId) {
+        return User.findById(userId)
+                .onItem()
+                .ifNull()
+                .failWith(() -> new NotFoundException("User not found"));
+    }
+
+    @WithSession
+    public Uni<Long> findIdByUsername(String username) {
+        return User.findByUsername(username)
+                .onItem().ifNull().failWith(() -> new NotFoundException("User not found: " + username))
+                .map(user -> user.id);
+    }
+
     @WithTransaction
-    public Uni<User> updateProfile(UpdateProfileRequest request, String username) {
-        return findByUsername(username)
+    public Uni<User> updateProfile(UpdateProfileRequest request, Long userId) {
+        return findById(userId)
                 .invoke(
                         user -> {
                             if (request.displayName != null && !request.displayName.isBlank()) {
@@ -53,8 +68,8 @@ public class UserDbService {
     }
 
     @WithTransaction
-    public Uni<Void> saveSubscription(String username, PushSubscription subscription) {
-        return findByUsername(username)
+    public Uni<Void> saveSubscription(Long userId, PushSubscription subscription) {
+        return findById(userId)
                 .invoke(user -> user.pushSubscription = subscription)
                 .replaceWithVoid();
     }
