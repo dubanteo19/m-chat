@@ -5,6 +5,7 @@ import org.eclipse.microprofile.jwt.Claim;
 import com.mchat.model.json.PushSubscription;
 import com.mchat.notification.NotificationService;
 import com.mchat.room.RoomService;
+import com.mchat.user.dto.request.ToggleNotificationsRequest;
 import com.mchat.user.dto.request.UpdateProfileRequest;
 
 import io.smallrye.mutiny.Uni;
@@ -12,6 +13,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -56,6 +58,15 @@ public class UserResource {
   public Uni<Response> updateProfile(@Valid UpdateProfileRequest request) {
     return userService
         .updateProfile(currentUserId, request)
+        .onItem()
+        .transform(updatedUser -> Response.ok(updatedUser).build());
+  }
+
+  @PATCH
+  @Path("/profile/notifications")
+  public Uni<Response> toggleNotifications(@Valid ToggleNotificationsRequest request) {
+    return userService
+        .updateNotificationSettings(currentUserId, request)
         .onItem()
         .transform(updatedUser -> Response.ok(updatedUser).build());
   }

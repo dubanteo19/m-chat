@@ -62,6 +62,13 @@ public class UserDbService {
     }
 
     @WithTransaction
+    public Uni<User> updateNotificationSettings(Long userId, boolean allowNotify) {
+        return findById(userId)
+                .invoke(
+                        user -> user.allowNotify = allowNotify);
+    }
+
+    @WithTransaction
     public Uni<List<UserInfo>> searchUsersByDisplayName(String displayName) {
         return User.searchByDisplayName(displayName)
                 .map(users -> users.stream().map(UserInfo::fromEntity).toList());

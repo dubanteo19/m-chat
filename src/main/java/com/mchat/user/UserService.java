@@ -3,15 +3,16 @@ package com.mchat.user;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.eclipse.microprofile.jwt.JsonWebToken;
-
+import com.mchat.auth.dto.response.CurrentUserInfo;
 import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.User;
 import com.mchat.model.json.PushSubscription;
+import com.mchat.user.dto.request.ToggleNotificationsRequest;
 import com.mchat.user.dto.request.UpdateProfileRequest;
-import io.quarkus.cache.Cache;
-import io.quarkus.cache.CacheName;
+
+import io.quarkus.cache.CacheInvalidate;
+import io.quarkus.cache.CacheKey;
 import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,16 +25,17 @@ public class UserService {
   @Inject
   UserDbService userDbService;
 
-  @Inject
-  @CacheName(CacheConstants.USER_INFO_BY_ID)
-  Cache userInfoCache;
-
   public Uni<List<UserInfo>> searchUsersByDisplayName(String displayName) {
     return userDbService.searchUsersByDisplayName(displayName);
   }
 
   public Uni<User> findByUsername(String username) {
     return userDbService.findByUsername(username);
+  }
+
+  public Uni<CurrentUserInfo> getCurrentUserInfo(String username) {
+    return userDbService.findIdByUsername(username)
+        .chain(userId -> getCurrentUserInfoById(userId));
   }
 
   public Uni<UserInfo> getUserInfoByUsername(String username) {
@@ -47,9 +49,21 @@ public class UserService {
     return userDbService.findById(userId).map(UserInfo::fromEntity);
   }
 
-  public Uni<User> updateProfile(Long userId, UpdateProfileRequest request) {
-    return userDbService.updateProfile(request, userId)
-        .call(updatedUserInfo -> userInfoCache.invalidate(userId));
+  @CacheResult(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)
+  public Uni<CurrentUserInfo> getCurrentUserInfoById(Long userId) {
+    logger.info("CACHE MISS! Fetching from DB layer for current user userId: " + userId);
+    return userDbService.findById(userId).map(CurrentUserInfo::fromEntity);
+  }
+
+  @CacheInvalidate(cacheName = CacheConstants.USER_INFO_BY_ID)
+  public Uni<User> updateProfile(@CacheKey Long userId, UpdateProfileRequest request) {
+    return userDbService.updateProfile(request, userId);
+  }
+
+  @CacheInvalidate(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)
+  public Uni<CurrentUserInfo> updateNotificationSettings(@CacheKey Long userId, ToggleNotificationsRequest request) {
+    return userDbService.updateNotificationSettings(userId, request.allowNotify())
+        .map(CurrentUserInfo::fromEntity);
   }
 
   public Uni<Void> saveSubscription(Long userId, PushSubscription subscription) {

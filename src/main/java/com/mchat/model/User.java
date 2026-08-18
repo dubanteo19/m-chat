@@ -1,18 +1,20 @@
 package com.mchat.model;
 
+import java.util.List;
+
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.mchat.model.json.PushSubscription;
 import com.mchat.model.json.TitleStyle;
+
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-
-import java.util.List;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "chat_users")
@@ -39,6 +41,9 @@ public class User extends PanacheEntity {
   @Column(name = "push_subscription")
   public PushSubscription pushSubscription;
 
+  @Column(name = "allow_notify", nullable = false)
+  @ColumnDefault("true")
+  public boolean allowNotify = true;
   public User() {
   }
 

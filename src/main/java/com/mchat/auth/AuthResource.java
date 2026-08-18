@@ -64,7 +64,7 @@ public class AuthResource {
                                         Response.status(Response.Status.UNAUTHORIZED).build());
                 }
 
-                return userService.getUserInfoByUsername(username)
+                return userService.getCurrentUserInfo(username)
                                 .map(userInfo -> {
                                         if (userInfo == null) {
                                                 return Response.status(Response.Status.NOT_FOUND).build();
