@@ -3,10 +3,13 @@ package com.mchat.notification;
 import java.security.Security;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -37,6 +40,7 @@ public class NotificationService {
     @Inject
     RoomService roomService;
     private final Map<String, Long> lastNotifiedMap = new ConcurrentHashMap<>();
+    private static final Pattern MENTION_PATTERN = Pattern.compile("<@([a-zA-Z0-9_-]+)>");
 
     private static final long COOLDOWN_MS = Duration.ofMinutes(2).toMillis();
 
@@ -82,6 +86,8 @@ public class NotificationService {
         System.out.println("Online users in room " + roomId + ": " + onlineUsernames);
         String senderUsername = savedMessage.sender.username;
         long now = System.currentTimeMillis();
+        Set<String> mentionedUserIds = extractMentionedUserIds(savedMessage.content);
+
         roomService.getRoomPushRecipients(roomId)
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe().with(
@@ -92,24 +98,76 @@ public class NotificationService {
                             recipients.stream()
                                     .filter(r -> !r.username().equals(senderUsername))
                                     .filter(r -> !onlineUsernames.contains(r.username()))
+                                    .filter(r -> !mentionedUserIds.contains(String.valueOf(r.userId())))
                                     .filter(r -> shouldSendNotification(roomId, r.username(), now))
                                     .forEach(r -> {
                                         sendPushSync(r, title, body);
-                                        lastNotifiedMap.put(getCooldownKey(roomId, r.username()), now);
+                                        lastNotifiedMap.put(
+                                                getCooldownKey(roomId, r.username()),
+                                                now);
                                     });
+
+                            sendMentionNotifications(
+                                    savedMessage,
+                                    roomId,
+                                    recipients,
+                                    onlineUsernames,
+                                    mentionedUserIds);
                         },
-                        failure -> System.err.println("Failed to process notifications: " + failure.getMessage()));
+                        failure -> System.err.println(
+                                "Failed to process notifications: " + failure.getMessage()));
     }
 
     private boolean shouldSendNotification(String roomId, String username, long now) {
         String key = getCooldownKey(roomId, username);
         Long lastSent = lastNotifiedMap.get(key);
 
-        // Allow sending if never notified or cooldown window has passed
         return lastSent == null || (now - lastSent) > COOLDOWN_MS;
     }
 
     private String getCooldownKey(String roomId, String username) {
         return roomId + ":" + username;
+    }
+
+    private void sendMentionNotifications(
+            Message savedMessage,
+            String roomId,
+            List<PushRecipientInfo> recipients,
+            Set<String> onlineUsernames,
+            Set<String> mentionedUserIds) {
+
+        if (mentionedUserIds.isEmpty()) {
+            return;
+        }
+
+        String senderUsername = savedMessage.sender.username;
+
+        recipients.stream()
+                .filter(r -> mentionedUserIds.contains(String.valueOf(r.userId())))
+                .filter(r -> !r.username().equals(senderUsername))
+                .filter(r -> !onlineUsernames.contains(r.username()))
+                .forEach(r -> {
+                    String title = savedMessage.sender.displayName
+                            + " mentioned you";
+
+                    String body = savedMessage.content;
+
+                    sendPushSync(r, title, body);
+                });
+    }
+
+    private Set<String> extractMentionedUserIds(String content) {
+        if (content == null || content.isBlank()) {
+            return Collections.emptySet();
+        }
+        var matcher = MENTION_PATTERN.matcher(content);
+
+        Set<String> userIds = new HashSet<>();
+
+        while (matcher.find()) {
+            userIds.add(matcher.group(1));
+        }
+
+        return userIds;
     }
 }
