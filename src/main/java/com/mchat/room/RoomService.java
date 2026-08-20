@@ -2,7 +2,6 @@ package com.mchat.room;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -17,9 +16,6 @@ import com.mchat.model.Room;
 import com.mchat.model.RoomRole;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.dto.request.CreateRoomRequest;
-import com.mchat.room.dto.request.MessagePaginationRequest;
-import com.mchat.room.dto.request.PaginatedMessagesResponse;
-import com.mchat.room.dto.response.MessageResponse;
 import com.mchat.room.dto.response.ReactionResult;
 import com.mchat.room.dto.response.RoomInfo;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
@@ -30,8 +26,8 @@ import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
@@ -44,21 +40,6 @@ public class RoomService {
   UserService userService;
   @Inject
   JsonWebToken jwt;
-
-  public Uni<PaginatedMessagesResponse<MessageResponse>> getRoomMessagesPaginated(
-      String roomId, MessagePaginationRequest pagination) {
-    int limit = pagination.getLimit();
-    var before = pagination.before();
-
-    return roomDbService.findMessagesPaginated(roomId, before, limit)
-        .map(messages -> {
-          boolean hasMore = messages.size() == limit;
-          Instant nextCursor = messages.isEmpty() ? null : messages.getLast().sentAt;
-          var responseMessages = new ArrayList<>(messages.stream().map(MessageResponse::from).toList());
-          Collections.reverse(responseMessages);
-          return new PaginatedMessagesResponse<>(responseMessages, nextCursor, hasMore);
-        });
-  }
 
   public Uni<RoomInfo> getRoomInfo(Long userId, String roomId) {
     return roomDbService.findMember(roomId, userId)
@@ -92,19 +73,6 @@ public class RoomService {
               }
             }))
         .chain(message -> roomDbService.persistMessage(message));
-  }
-
-  @WithTransaction
-  public Uni<Message> unsendMessage(Long userId, Long messageId) {
-    return roomDbService.findMessageById(messageId)
-        .onItem().ifNull().failWith(() -> new IllegalArgumentException("Message not found: " + messageId))
-        .chain(message -> {
-          if (!message.sender.id.equals(userId)) {
-            return Uni.createFrom().failure(new SecurityException("Unauthorized context action"));
-          }
-          message.isDeleted = true;
-          return roomDbService.persistMessage(message);
-        });
   }
 
   @WithTransaction
