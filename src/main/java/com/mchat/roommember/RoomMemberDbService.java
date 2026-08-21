@@ -3,7 +3,7 @@ package com.mchat.roommember;
 
 import com.mchat.model.RoomMember;
 import com.mchat.model.RoomRole;
-import com.mchat.room.RoomService;
+import com.mchat.room.RoomDbService;
 import com.mchat.user.UserService;
 
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
@@ -16,7 +16,7 @@ import jakarta.ws.rs.ForbiddenException;
 @ApplicationScoped
 public class RoomMemberDbService {
     @Inject
-    RoomService roomService;
+    RoomDbService roomDbService;
     @Inject
     UserService userService;
 
@@ -37,7 +37,7 @@ public class RoomMemberDbService {
                                 .onItem()
                                 .ifNotNull()
                                 .failWith(() -> new IllegalArgumentException("User already in room"))
-                                .chain(ignored -> roomService.findRoomById(roomId))
+                                .chain(ignored -> roomDbService.findRequiredById(roomId))
                                 .chain(room -> new RoomMember(room, user, RoomRole.MEMBER).persist()));
     }
 

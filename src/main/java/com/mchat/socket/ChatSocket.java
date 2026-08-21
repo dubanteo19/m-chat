@@ -11,11 +11,9 @@ import org.jboss.logging.Logger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
-import com.mchat.model.MessageType;
+import com.mchat.message.dto.response.MessageResponse;
 import com.mchat.notification.NotificationService;
 import com.mchat.room.RoomService;
-import com.mchat.room.dto.response.MessageResponse;
-import com.mchat.room.dto.response.MessageUpdateResponse;
 import com.mchat.room.dto.response.OnlineUsersResponse;
 import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
@@ -67,7 +65,7 @@ public class ChatSocket {
         .chain(
             user -> {
               if (user == null) {
-                return connection.close(); // Force close connection if user entity doesn't exist
+                return connection.close();
               }
 
               var userInfo = UserInfo.fromEntity(user);
@@ -107,57 +105,14 @@ public class ChatSocket {
       if (EventType.PING.equals(eventType)) {
         return Uni.createFrom().voidItem();
       }
+
       // --- FORWARDABLE EVENTS ---
-      if (FORWARDABLE_EVENTS.contains(eventType)) {
-        LOG.info("Forwarding event " + eventType + " from user " + username + " in room " + roomId);
-        return chatBroadcaster.sendToRoom(roomId, payload);
-      }
-      // --- CASE MESSAGE REACTIONS ---
-      if (EventType.REACTION.equals(eventType)) {
-        Long messageId = jsonNode.get("messageId").asLong();
-        String emoji = jsonNode.get("content").asText();
-
-        return roomService
-            .saveReaction(roomId, username, messageId, emoji)
-            .chain(
-                result -> {
-                  var responsePayload = MessageUpdateResponse.createReactionUpdate(
-                      messageId, emoji, result.reaction(), result.user());
-
-                  try {
-                    String jsonText = objectMapper.writeValueAsString(responsePayload);
-                    return chatBroadcaster.sendToRoom(roomId, jsonText);
-                  } catch (JsonProcessingException e) {
-                    return Uni.createFrom().failure(e);
-                  }
-                });
-      }
-
-      // --- CHAT MESSAGES & INLINE REPLIES ---
-      var messageType = MessageType.valueOf(jsonNode.get("type").asText().toUpperCase());
-      String finalContent = jsonNode.get("content").asText();
-      Long parentId = jsonNode.has("replyTo") && !jsonNode.get("replyTo").isNull()
-          ? jsonNode.get("replyTo").asLong()
-          : null;
-      return roomService
-          .saveIncomingMessage(roomId, username, finalContent, messageType, parentId)
-          .chain(
-              savedMessage -> {
-                // Get snapshot of online users right now
-                var onlineUsers = getOnlineUsers(roomId);
-
-                // Fire-and-forget
-                notificationService.sendNotificationForMessage(savedMessage, roomId, onlineUsers);
-
-                return chatBroadcaster.sendToRoom(roomId, MessageResponse.from(savedMessage));
-              });
+      LOG.info("Forwarding event " + eventType + " from user " + username + " in room " + roomId);
+      return chatBroadcaster.sendToRoom(roomId, payload);
 
     } catch (Exception e) {
 
-      return roomService
-          .saveIncomingMessage(roomId, username, payload, MessageType.TEXT, null)
-          .chain(
-              savedMessage -> chatBroadcaster.sendToRoom(roomId, MessageResponse.from(savedMessage)));
+      return chatBroadcaster.sendToRoom(roomId, payload);
     }
   }
 

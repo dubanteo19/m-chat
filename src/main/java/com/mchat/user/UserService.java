@@ -46,13 +46,13 @@ public class UserService {
   @CacheResult(cacheName = CacheConstants.USER_INFO_BY_ID)
   public Uni<UserInfo> getUserInfoById(Long userId) {
     logger.info("CACHE MISS! Fetching from DB layer for userId: " + userId);
-    return userDbService.findById(userId).map(UserInfo::fromEntity);
+    return userDbService.findRequiredById(userId).map(UserInfo::fromEntity);
   }
 
   @CacheResult(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)
   public Uni<CurrentUserInfo> getCurrentUserInfoById(Long userId) {
     logger.info("CACHE MISS! Fetching from DB layer for current user userId: " + userId);
-    return userDbService.findById(userId).map(CurrentUserInfo::fromEntity);
+    return userDbService.findRequiredById(userId).map(CurrentUserInfo::fromEntity);
   }
 
   @CacheInvalidate(cacheName = CacheConstants.USER_INFO_BY_ID)

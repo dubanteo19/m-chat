@@ -1,4 +1,4 @@
-package com.mchat.room.dto.response;
+package com.mchat.message.dto.response;
 
 import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.model.MessageReaction;

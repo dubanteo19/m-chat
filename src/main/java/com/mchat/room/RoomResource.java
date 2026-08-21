@@ -3,7 +3,6 @@ package com.mchat.room;
 import org.eclipse.microprofile.jwt.Claim;
 
 import com.mchat.room.dto.request.CreateRoomRequest;
-import com.mchat.socket.ChatBroadcaster;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
@@ -21,8 +20,6 @@ public class RoomResource {
 
   @Inject
   RoomService roomService;
-  @Inject
-  ChatBroadcaster chatBroadcaster;
 
   @Inject
   @Claim("userId")

@@ -1,7 +1,5 @@
 package com.mchat.room;
 
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -9,25 +7,18 @@ import java.util.logging.Logger;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import com.mchat.common.cache.CacheConstants;
-import com.mchat.model.Message;
-import com.mchat.model.MessageReaction;
-import com.mchat.model.MessageType;
-import com.mchat.model.Room;
 import com.mchat.model.RoomRole;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.dto.request.CreateRoomRequest;
-import com.mchat.room.dto.response.ReactionResult;
 import com.mchat.room.dto.response.RoomInfo;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
 import com.mchat.user.UserService;
 
 import io.quarkus.cache.CacheResult;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
@@ -49,72 +40,8 @@ public class RoomService {
 
   @CacheResult(cacheName = CacheConstants.ROOM_INFO)
   public Uni<RoomInfo> fetchRoomInfoCached(String roomId) {
-    return roomDbService.findRoomById(roomId)
-        .onItem().ifNull().failWith(() -> new NotFoundException("Room not found: " + roomId))
+    return roomDbService.findRequiredById(roomId)
         .map(RoomInfo::fromEntity);
-  }
-
-  public Uni<Room> findRoomById(String roomId) {
-    return roomDbService.findRoomById(roomId)
-        .onItem().ifNull().failWith(() -> new NotFoundException("Room not found: " + roomId));
-  }
-
-  public Uni<Message> saveIncomingMessage(
-      String roomId, String username, String content, MessageType messageType, Long parentId) {
-    return findRoomById(roomId)
-        .chain(room -> userService.findByUsername(username)
-            .onItem().ifNull().failWith(() -> new NotFoundException("User not found: " + username))
-            .chain(user -> {
-              if (parentId != null) {
-                return roomDbService.findMessageById(parentId)
-                    .map(parentMessage -> new Message(content, user, messageType, room, parentMessage));
-              } else {
-                return Uni.createFrom().item(new Message(content, user, messageType, room, null));
-              }
-            }))
-        .chain(message -> roomDbService.persistMessage(message));
-  }
-
-  @WithTransaction
-  public Uni<ReactionResult> saveReaction(String roomId, String username, Long messageId, String emoji) {
-    return userService.findByUsername(username)
-        .chain(user -> {
-          if (user == null) {
-            return Uni.createFrom().failure(new IllegalArgumentException("User not found: " + username));
-          }
-          return roomDbService.findMessageById(messageId)
-              .chain(message -> {
-                if (message == null) {
-                  return Uni.createFrom().failure(new IllegalArgumentException("Message not found: " + messageId));
-                }
-
-                if (message.reactions == null) {
-                  message.reactions = new ArrayList<>();
-                }
-
-                MessageReaction managedReaction = message.reactions.stream()
-                    .filter(r -> r.user != null && r.user.username.equals(username))
-                    .findFirst()
-                    .orElse(null);
-
-                if (managedReaction != null) {
-                  if (managedReaction.type.equals(emoji)) {
-                    message.reactions.remove(managedReaction);
-                    return Uni.createFrom().item(new ReactionResult(null, user));
-                  } else {
-                    managedReaction.type = emoji;
-                    managedReaction.reactedAt = Instant.now();
-                    return roomDbService.persistReaction(managedReaction)
-                        .map(v -> new ReactionResult(managedReaction, user));
-                  }
-                } else {
-                  var newReaction = new MessageReaction(message, user, emoji);
-                  message.reactions.add(newReaction);
-                  return roomDbService.persistReaction(newReaction)
-                      .map(v -> new ReactionResult(newReaction, user));
-                }
-              });
-        });
   }
 
   public Uni<RoomInfo> create(Long userId, CreateRoomRequest request) {

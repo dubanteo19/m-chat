@@ -7,10 +7,11 @@ import com.mchat.model.Message;
 import com.mchat.model.MessageReaction;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
-import com.mchat.model.User;
 
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+
+import jakarta.ws.rs.NotFoundException;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -29,8 +30,16 @@ public class RoomDbService {
     }
 
     @WithSession
-    public Uni<Room> findRoomById(String roomId) {
+    public Uni<Room> findById(String roomId) {
         return Room.findById(roomId);
+    }
+
+    @WithSession
+    public Uni<Room> findRequiredById(String roomId) {
+        return Room.<Room>findById(roomId)
+                .onItem().ifNull()
+                .failWith(() -> new NotFoundException(
+                        "Room not found: " + roomId));
     }
 
     @WithSession
@@ -46,16 +55,6 @@ public class RoomDbService {
     @WithSession
     public Uni<RoomMember> findMember(String roomId, Long userId) {
         return RoomMember.<RoomMember>find("room.id = ?1 and user.id = ?2", roomId, userId).firstResult();
-    }
-
-    @WithSession
-    public Uni<Message> findMessageById(Long messageId) {
-        return Message.findById(messageId);
-    }
-
-    @WithTransaction
-    public Uni<Message> persistMessage(Message message) {
-        return message.persist();
     }
 
     @WithTransaction

@@ -26,7 +26,7 @@ public class UserDbService {
     }
 
     @WithSession
-    public Uni<User> findById(Long userId) {
+    public Uni<User> findRequiredById(Long userId) {
         return User.findById(userId)
                 .onItem()
                 .ifNull()
@@ -42,7 +42,7 @@ public class UserDbService {
 
     @WithTransaction
     public Uni<User> updateProfile(UpdateProfileRequest request, Long userId) {
-        return findById(userId)
+        return findRequiredById(userId)
                 .invoke(
                         user -> {
                             if (request.displayName != null && !request.displayName.isBlank()) {
@@ -63,7 +63,7 @@ public class UserDbService {
 
     @WithTransaction
     public Uni<User> updateNotificationSettings(Long userId, boolean allowNotify) {
-        return findById(userId)
+        return findRequiredById(userId)
                 .invoke(
                         user -> user.allowNotify = allowNotify);
     }
@@ -76,7 +76,7 @@ public class UserDbService {
 
     @WithTransaction
     public Uni<Void> saveSubscription(Long userId, PushSubscription subscription) {
-        return findById(userId)
+        return findRequiredById(userId)
                 .invoke(user -> user.pushSubscription = subscription)
                 .replaceWithVoid();
     }
