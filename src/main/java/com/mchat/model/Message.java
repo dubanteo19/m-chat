@@ -71,4 +71,8 @@ public class Message extends PanacheEntity {
           .list();
     }
   }
+
+  public static Uni<Message> findByIdAndRoomId(Long id, String roomId) {
+    return find("room.id = ?1 and id = ?2", roomId, id).firstResult();
+  }
 }
