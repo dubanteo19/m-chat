@@ -1,13 +1,5 @@
 package com.mchat.socket;
 
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-
-import org.jboss.logging.Logger;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
@@ -17,7 +9,6 @@ import com.mchat.room.RoomService;
 import com.mchat.room.dto.response.OnlineUsersResponse;
 import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
-
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
@@ -25,30 +16,29 @@ import io.quarkus.websockets.next.WebSocket;
 import io.quarkus.websockets.next.WebSocketConnection;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import org.jboss.logging.Logger;
 
 @WebSocket(path = "/chat/{roomId}/{username}")
 public class ChatSocket {
 
   private static final Logger LOG = Logger.getLogger(ChatSocket.class);
-  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers =
+      new ConcurrentHashMap<>();
 
-  @Inject
-  NotificationService notificationService;
-  @Inject
-  WebSocketConnection connection;
-  @Inject
-  RoomService roomService;
-  @Inject
-  ObjectMapper objectMapper;
-  @Inject
-  UserService userService;
-  @Inject
-  ChatBroadcaster chatBroadcaster;
+  @Inject NotificationService notificationService;
+  @Inject WebSocketConnection connection;
+  @Inject RoomService roomService;
+  @Inject ObjectMapper objectMapper;
+  @Inject UserService userService;
+  @Inject ChatBroadcaster chatBroadcaster;
 
-  private static final Set<EventType> FORWARDABLE_EVENTS = EnumSet.of(
-      EventType.TYPING_START,
-      EventType.TYPING_STOP,
-      EventType.ROOM_EFFECT);
+  private static final Set<EventType> FORWARDABLE_EVENTS =
+      EnumSet.of(EventType.TYPING_START, EventType.TYPING_STOP, EventType.ROOM_EFFECT);
 
   public Set<UserInfo> getOnlineUsers(String roomId) {
     return roomUsers.getOrDefault(roomId, Collections.emptySet());
@@ -70,7 +60,8 @@ public class ChatSocket {
 
               var userInfo = UserInfo.fromEntity(user);
               roomUsers.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(userInfo);
-              var joinMessage = MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
+              var joinMessage =
+                  MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
               var onlineUsersPayload = OnlineUsersResponse.from(roomUsers.get(roomId));
 
               try {
@@ -128,7 +119,8 @@ public class ChatSocket {
 
     Set<UserInfo> users = roomUsers.get(roomId);
     if (users != null) {
-      var leavingUser = users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
+      var leavingUser =
+          users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
 
       users.removeIf(u -> username.equals(u.username()));
 
@@ -137,7 +129,8 @@ public class ChatSocket {
         return Uni.createFrom().voidItem();
       }
 
-      var leaveMessage = MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
+      var leaveMessage =
+          MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
       var updatedOnlineUsersPayload = OnlineUsersResponse.from(users);
 
       try {

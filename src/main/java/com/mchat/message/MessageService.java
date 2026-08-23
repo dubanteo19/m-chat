@@ -2,8 +2,8 @@ package com.mchat.message;
 
 import com.mchat.message.dto.response.MessageDeleteResponse;
 import com.mchat.message.dto.response.MessageResponse;
+import com.mchat.message.dto.response.MessageUpdateResponse;
 import com.mchat.message.dto.response.PaginatedMessagesResponse;
-import com.mchat.message.dto.response.ReactionResult;
 import com.mchat.model.MessageType;
 import com.mchat.room.RoomDbService;
 import io.smallrye.mutiny.Uni;
@@ -50,9 +50,14 @@ public class MessageService {
         .map(MessageDeleteResponse::create);
   }
 
-  public Uni<ReactionResult> saveReaction(
+  public Uni<MessageUpdateResponse> saveReaction(
       Long currentUserId, String roomId, Long messageId, String emoji) {
 
-    return messageDbService.saveReaction(currentUserId, roomId, messageId, emoji);
+    return messageDbService
+        .saveReaction(currentUserId, roomId, messageId, emoji)
+        .map(
+            result ->
+                MessageUpdateResponse.createReactionUpdate(
+                    messageId, emoji, result.reaction(), result.user()));
   }
 }

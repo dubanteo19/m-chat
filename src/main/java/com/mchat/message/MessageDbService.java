@@ -13,9 +13,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class MessageDbService {
+
+  Logger logger = Logger.getLogger(MessageDbService.class.getName());
   @Inject RoomDbService roomDbService;
 
   @Inject UserDbService userDbService;
@@ -90,15 +93,18 @@ public class MessageDbService {
                     .chain(
                         message -> {
                           if (message.reactions == null) message.reactions = new ArrayList<>();
-
                           var managedReaction =
                               message.reactions.stream()
-                                  .filter(r -> r.user != null && userId.equals(r.user.id))
+                                  .filter(
+                                      r ->
+                                          r.user != null
+                                              && userId.equals(r.user.id)
+                                              && emoji.equals(r.type))
                                   .findFirst()
                                   .orElse(null);
 
                           if (managedReaction != null) {
-                            if (managedReaction.type.equals(emoji)) {
+                            if (emoji.equals(managedReaction.type)) {
                               message.reactions.remove(managedReaction);
                               return Uni.createFrom().item(new ReactionResult(null, user));
                             } else {

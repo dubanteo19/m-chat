@@ -67,13 +67,12 @@ public class MessageResource {
       @PathParam("roomId") String roomId,
       @PathParam("messageId") Long messageId,
       MessageReactRequest request) {
-
     return messageService
         .saveReaction(currentUserId, roomId, messageId, request.emoji())
         .chain(
-            messageResponse ->
+            reactionResponse ->
                 chatBroadcaster
-                    .sendToRoom(roomId, messageResponse)
-                    .replaceWith(Response.ok(messageResponse).build()));
+                    .sendToRoom(roomId, reactionResponse)
+                    .replaceWith(Response.ok(reactionResponse).build()));
   }
 }
