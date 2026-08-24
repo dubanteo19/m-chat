@@ -40,7 +40,7 @@ public class ChatSocket {
   private static final Set<EventType> FORWARDABLE_EVENTS =
       EnumSet.of(EventType.TYPING_START, EventType.TYPING_STOP, EventType.ROOM_EFFECT);
 
-  public Set<UserInfo> getOnlineUsers(String roomId) {
+  public static Set<UserInfo> getOnlineUsers(String roomId) {
     return roomUsers.getOrDefault(roomId, Collections.emptySet());
   }
 

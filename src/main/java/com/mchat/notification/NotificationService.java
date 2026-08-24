@@ -17,6 +17,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
+import com.mchat.message.dto.response.MessageResponse;
 import com.mchat.model.Message;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.RoomService;
@@ -76,7 +77,7 @@ public class NotificationService {
         }
     }
 
-    public void sendNotificationForMessage(Message savedMessage, String roomId, Set<UserInfo> onlineUsers) {
+    public void sendNotificationForMessage(MessageResponse messageResponse, String roomId, Set<UserInfo> onlineUsers) {
 
         Set<String> onlineUsernames = (onlineUsers == null)
                 ? Collections.emptySet()
@@ -84,16 +85,16 @@ public class NotificationService {
                         .map(UserInfo::username)
                         .collect(Collectors.toSet());
         System.out.println("Online users in room " + roomId + ": " + onlineUsernames);
-        String senderUsername = savedMessage.sender.username;
+        String senderUsername = messageResponse.sender().username();
         long now = System.currentTimeMillis();
-        Set<String> mentionedUserIds = extractMentionedUserIds(savedMessage.content);
+        Set<String> mentionedUserIds = extractMentionedUserIds(messageResponse.content());
 
         roomService.getRoomPushRecipients(roomId)
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe().with(
                         recipients -> {
                             String title = "New message from " + senderUsername;
-                            String body = savedMessage.content;
+                            String body = messageResponse.content();
 
                             recipients.stream()
                                     .filter(r -> !r.username().equals(senderUsername))
@@ -108,7 +109,7 @@ public class NotificationService {
                                     });
 
                             sendMentionNotifications(
-                                    savedMessage,
+                                    messageResponse,
                                     roomId,
                                     recipients,
                                     onlineUsernames,
@@ -130,7 +131,7 @@ public class NotificationService {
     }
 
     private void sendMentionNotifications(
-            Message savedMessage,
+            MessageResponse messageResponse,
             String roomId,
             List<PushRecipientInfo> recipients,
             Set<String> onlineUsernames,
@@ -140,17 +141,17 @@ public class NotificationService {
             return;
         }
 
-        String senderUsername = savedMessage.sender.username;
+        String senderUsername = messageResponse.sender().username();
 
         recipients.stream()
                 .filter(r -> mentionedUserIds.contains(String.valueOf(r.userId())))
                 .filter(r -> !r.username().equals(senderUsername))
                 .filter(r -> !onlineUsernames.contains(r.username()))
                 .forEach(r -> {
-                    String title = savedMessage.sender.displayName
+                    String title = messageResponse.sender().displayName()
                             + " mentioned you";
 
-                    String body = savedMessage.content;
+                    String body = messageResponse.content();
 
                     sendPushSync(r, title, body);
                 });

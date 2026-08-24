@@ -85,7 +85,7 @@ public class AuthResource {
               NewCookie authCookie =
                   new NewCookie.Builder("m_user")
                       .value(signedToken)
-                      // .domain("dbt19.site")
+                      .domain("dbt19.site")
                       .path("/")
                       .maxAge((int) Duration.ofDays(30).toSeconds())
                       .secure(false)
