@@ -1,12 +1,15 @@
 package com.mchat.model;
 
-import com.github.slugify.Slugify;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
-import io.smallrye.mutiny.Uni;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import java.time.Instant;
 import java.util.List;
+
+import com.github.slugify.Slugify;
+
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import io.smallrye.mutiny.Uni;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
 @Entity
 public class Room extends PanacheEntityBase {
@@ -17,6 +20,9 @@ public class Room extends PanacheEntityBase {
   public String name;
   public String description;
   public Instant createdAt;
+
+  @Column(name = "last_seq", nullable = false)
+  public Long lastSeq = 0L;
 
   public boolean deleted = false;
   public Instant deletedAt;

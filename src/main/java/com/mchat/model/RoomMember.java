@@ -1,5 +1,8 @@
 package com.mchat.model;
 
+import java.time.Instant;
+import java.util.List;
+
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
@@ -11,8 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.Instant;
-import java.util.List;
 
 @Entity
 @Table(name = "room_members", uniqueConstraints = @UniqueConstraint(columnNames = { "room_id", "user_id" }))
@@ -28,6 +29,9 @@ public class RoomMember extends PanacheEntity {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   public RoomRole role;
+
+  @Column(name = "last_seen_seq", nullable = false)
+  public Long lastSeenSeq = 0L;
 
   public Instant joinedAt;
 
