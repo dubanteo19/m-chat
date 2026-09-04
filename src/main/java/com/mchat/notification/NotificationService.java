@@ -57,12 +57,13 @@ public class NotificationService {
         this.pushService = new PushService(publicKey, privateKey, subject);
     }
 
-    private void sendPushSync(PushRecipientInfo recipient, String title, String body) {
+    private void sendPushSync(PushRecipientInfo recipient, String title, String body, String roomId) {
         if (recipient.endpoint() == null)
             return;
 
         try {
-            Map<String, String> payload = Map.of("title", title, "body", body);
+            String url = "/room/" + roomId;
+            Map<String, String> payload = Map.of("title", title, "body", body, "url", url);
             System.out.println("Sending push notification to " + recipient.username() + ": " + payload);
             String json = objectMapper.writeValueAsString(payload);
 
@@ -102,7 +103,7 @@ public class NotificationService {
                                     .filter(r -> !mentionedUserIds.contains(String.valueOf(r.userId())))
                                     .filter(r -> shouldSendNotification(roomId, r.username(), now))
                                     .forEach(r -> {
-                                        sendPushSync(r, title, body);
+                                        sendPushSync(r, title, body, roomId);
                                         lastNotifiedMap.put(
                                                 getCooldownKey(roomId, r.username()),
                                                 now);
@@ -153,7 +154,7 @@ public class NotificationService {
 
                     String body = messageResponse.content();
 
-                    sendPushSync(r, title, body);
+                    sendPushSync(r, title, body, roomId);
                 });
     }
 

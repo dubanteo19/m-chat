@@ -3,6 +3,8 @@ package com.mchat.model;
 import java.time.Instant;
 import java.util.List;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
@@ -31,6 +33,7 @@ public class RoomMember extends PanacheEntity {
   public RoomRole role;
 
   @Column(name = "last_seen_seq", nullable = false)
+  @ColumnDefault("0")
   public Long lastSeenSeq = 0L;
 
   public Instant joinedAt;
@@ -55,4 +58,9 @@ public class RoomMember extends PanacheEntity {
         .list();
   }
 
+  public static Uni<Void> updateLastSeenSeq(String roomId, Long userId, Long seq) {
+    return update(
+        "lastSeenSeq = case when lastSeenSeq < ?3 then ?3 else lastSeenSeq end where room.id = ?1 and user.id = ?2",
+        roomId, userId, seq).replaceWithVoid();
+  }
 }

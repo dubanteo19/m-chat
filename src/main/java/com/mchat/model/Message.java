@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
@@ -31,6 +33,7 @@ public class Message extends PanacheEntity {
   public String content;
 
   @Column(name = "seq", nullable = false)
+  @ColumnDefault("0")
   public Long seq;
 
   @ManyToOne(fetch = FetchType.EAGER)
@@ -60,12 +63,13 @@ public class Message extends PanacheEntity {
   public Message() {
   }
 
-  public Message(String content, User sender, MessageType type, Room room, Message parentMessage) {
+  public Message(String content, User sender, MessageType type, Room room, Message parentMessage, Long seq) {
     this.content = content;
     this.sender = sender;
     this.type = type;
     this.room = room;
     this.parentMessage = parentMessage;
+    this.seq = seq;
     this.sentAt = Instant.now();
   }
 

@@ -3,6 +3,8 @@ package com.mchat.model;
 import java.time.Instant;
 import java.util.List;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import com.github.slugify.Slugify;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
@@ -22,6 +24,7 @@ public class Room extends PanacheEntityBase {
   public Instant createdAt;
 
   @Column(name = "last_seq", nullable = false)
+  @ColumnDefault("0")
   public Long lastSeq = 0L;
 
   public boolean deleted = false;
@@ -68,5 +71,12 @@ public class Room extends PanacheEntityBase {
         where rm.user.id = ?1 and r.deleted = false
         """, userId)
         .list();
+  }
+
+  public static Uni<Long> incrementAndGetSeq(String roomId) {
+    return update("lastSeq = lastSeq + 1 where id = ?1", roomId)
+        .chain(() -> find("select r.lastSeq from Room r where r.id = ?1", roomId)
+            .project(Long.class)
+            .firstResult());
   }
 }
