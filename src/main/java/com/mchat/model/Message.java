@@ -25,7 +25,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @WithTransaction
-@Table(name = "messages", indexes = {
+@Table(name = "message", indexes = {
     @Index(name = "idx_room_seq", columnList = "room_id, seq")
 })
 public class Message extends PanacheEntity {

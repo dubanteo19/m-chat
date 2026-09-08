@@ -68,8 +68,7 @@ public class RoomService {
   }
 
   public Uni<List<RoomInfo>> findMyRooms(Long userId) {
-    return roomDbService.findRoomsByUserId(userId)
-        .map(rooms -> rooms.stream().map(RoomInfo::fromEntity).toList());
+    return roomDbService.findRoomsByUserId(userId);
   }
 
   @CacheResult(cacheName = "room-push-recipients")
@@ -80,5 +79,9 @@ public class RoomService {
             .map(PushRecipientInfo::fromEntity)
             .filter(Objects::nonNull)
             .toList());
+  }
+
+  public Uni<Void> read(Long userId, String roomId, Long seq) {
+    return roomDbService.read(userId, roomId, seq);
   }
 }

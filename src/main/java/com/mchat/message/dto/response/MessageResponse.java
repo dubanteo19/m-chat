@@ -15,6 +15,7 @@ public record MessageResponse(
                 String sentAt,
                 RepliedMessageInfo repliedTo,
                 List<ReactionInfo> reactions,
+                Long seq,
                 boolean isDeleted) {
 
         public record RepliedMessageInfo(Long id, String senderName, String content, MessageType type) {
@@ -49,6 +50,7 @@ public record MessageResponse(
                                 message.sentAt != null ? message.sentAt.toString() : Instant.now().toString(),
                                 repliedInfo,
                                 reactionInfos,
+                                message.seq,
                                 message.isDeleted);
         }
 
@@ -63,6 +65,7 @@ public record MessageResponse(
                                 Instant.now().toString(),
                                 null,
                                 List.of(),
+                                0L,
                                 false);
         }
 }

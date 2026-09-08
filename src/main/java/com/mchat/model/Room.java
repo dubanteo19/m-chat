@@ -6,6 +6,7 @@ import java.util.List;
 import org.hibernate.annotations.ColumnDefault;
 
 import com.github.slugify.Slugify;
+import com.mchat.room.dto.response.RoomInfo;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
@@ -64,12 +65,18 @@ public class Room extends PanacheEntityBase {
     return room;
   }
 
-  public static Uni<List<Room>> findRoomsByUser(Long userId) {
-    return Room.<Room>find("""
-        select r from Room r
+  public static Uni<List<RoomInfo>> findRoomsByUser(Long userId) {
+    return Room.find("""
+        select r.id,
+               r.name,
+               r.description,
+               r.lastSeq - rm.lastSeenSeq
+        from Room r
         join RoomMember rm on rm.room = r
-        where rm.user.id = ?1 and r.deleted = false
+        where rm.user.id = ?1
+          and r.deleted = false
         """, userId)
+        .project(RoomInfo.class)
         .list();
   }
 

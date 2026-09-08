@@ -3,6 +3,7 @@ package com.mchat.room;
 import org.eclipse.microprofile.jwt.Claim;
 
 import com.mchat.room.dto.request.CreateRoomRequest;
+import com.mchat.room.dto.request.ReadRoomRequest;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
@@ -10,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
@@ -30,6 +32,13 @@ public class RoomResource {
   public Uni<Response> getRoomInfo(
       @PathParam("roomId") String roomId) {
     return roomService.getRoomInfo(currentUserId, roomId).map(payload -> Response.ok(payload).build());
+  }
+
+  @PUT
+  @Path("/{roomId}/read")
+  public Uni<Response> read(
+      @PathParam("roomId") String roomId, ReadRoomRequest request) {
+    return roomService.read(currentUserId, roomId, request.seq()).map(payload -> Response.noContent().build());
   }
 
   @POST

@@ -3,7 +3,10 @@ package com.mchat.room;
 import com.mchat.model.Message;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
+import com.mchat.room.dto.response.RoomInfo;
+
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
+import jakarta.ws.rs.ForbiddenException;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,7 +20,7 @@ public class RoomDbService {
   @WithSession
   public Uni<List<RoomMember>> findPushRecipientMembers(String roomId) {
     return RoomMember.<RoomMember>find(
-            "FROM RoomMember rm JOIN FETCH rm.user u WHERE rm.room.id = ?1", roomId)
+        "FROM RoomMember rm JOIN FETCH rm.user u WHERE rm.room.id = ?1", roomId)
         .list();
   }
 
@@ -45,7 +48,7 @@ public class RoomDbService {
   }
 
   @WithSession
-  public Uni<List<Room>> findRoomsByUserId(Long userId) {
+  public Uni<List<RoomInfo>> findRoomsByUserId(Long userId) {
     return Room.findRoomsByUser(userId);
   }
 
@@ -64,5 +67,17 @@ public class RoomDbService {
   public Uni<Boolean> softDeleteRoom(String roomId) {
     return Room.softDeleteRoom(roomId);
   }
-}
 
+  @WithTransaction
+  public Uni<Void> read(Long userId, String roomId, Long seq) {
+    return findMember(roomId, userId)
+        .onItem().ifNull().failWith(() -> new ForbiddenException("User is not a member of the room: " + roomId))
+        .chain(member -> {
+          if (seq != null && seq > member.lastSeenSeq) {
+            member.lastSeenSeq = seq;
+            return member.persist().replaceWithVoid();
+          }
+          return Uni.createFrom().voidItem();
+        });
+  }
+}
