@@ -1,3 +1,5 @@
+package com.mchat.socket;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
@@ -7,10 +9,13 @@ import jakarta.ws.rs.sse.SseEventSink;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import java.util.logging.Logger;
+
 @ApplicationScoped
 public class UserEventBroadcaster {
     @Inject
     Sse sse;
+    Logger logger = Logger.getLogger(UserEventBroadcaster.class.getName());
     private final ConcurrentHashMap<Long, Set<SseEventSink>> connections = new ConcurrentHashMap<>();
 
     public void add(Long userId, SseEventSink sink) {
@@ -45,6 +50,7 @@ public class UserEventBroadcaster {
                 .build();
 
         for (var sink : sinks) {
+            logger.info("Sending event to userId: " + userId + ", data: " + data);
             sink.send(event)
                     .exceptionally(ex -> {
                         return null;

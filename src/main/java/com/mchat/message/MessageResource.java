@@ -6,6 +6,7 @@ import com.mchat.message.dto.request.MessageReactRequest;
 import com.mchat.notification.NotificationService;
 import com.mchat.socket.ChatBroadcaster;
 import com.mchat.socket.ChatSocket;
+import com.mchat.user.UserEventService;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
@@ -22,65 +23,72 @@ import org.eclipse.microprofile.jwt.Claim;
 @Path("/rooms/{roomId}/messages")
 @RequestScoped
 public class MessageResource {
-    @Inject
-    NotificationService notificationService;
+        @Inject
+        NotificationService notificationService;
 
-    @Inject
-    MessageService messageService;
-    @Inject
-    ChatBroadcaster chatBroadcaster;
+        @Inject
+        MessageService messageService;
+        @Inject
+        ChatBroadcaster chatBroadcaster;
+        @Inject
+        UserEventService userEventService;
+        @Inject
+        @Claim("userId")
+        Long currentUserId;
 
-    @Inject
-    @Claim("userId")
-    Long currentUserId;
+        @GET
+        public Uni<Response> getMessages(
+                        @PathParam("roomId") String roomId, @BeanParam MessagePaginationRequest pagination) {
 
-    @GET
-    public Uni<Response> getMessages(
-            @PathParam("roomId") String roomId, @BeanParam MessagePaginationRequest pagination) {
+                return messageService
+                                .getRoomMessagesPaginated(roomId, pagination.getLimit(), pagination.before())
+                                .map(payload -> Response.ok(payload).build());
+        }
 
-        return messageService
-                .getRoomMessagesPaginated(roomId, pagination.getLimit(), pagination.before())
-                .map(payload -> Response.ok(payload).build());
-    }
+        @DELETE
+        @Path("/{messageId}")
+        public Uni<Response> deleteMessage(
+                        @PathParam("roomId") String roomId, @PathParam("messageId") Long messageId) {
 
-    @DELETE
-    @Path("/{messageId}")
-    public Uni<Response> deleteMessage(
-            @PathParam("roomId") String roomId, @PathParam("messageId") Long messageId) {
+                return messageService
+                                .unsendMessage(currentUserId, messageId)
+                                .chain(deletedMessageResponse -> chatBroadcaster.sendToRoom(roomId,
+                                                deletedMessageResponse))
+                                .map(payload -> Response.ok(payload).build());
+        }
 
-        return messageService
-                .unsendMessage(currentUserId, messageId)
-                .chain(deletedMessageResponse -> chatBroadcaster.sendToRoom(roomId, deletedMessageResponse))
-                .map(payload -> Response.ok(payload).build());
-    }
+        @POST
+        public Uni<Response> sendMessage(
+                        @PathParam("roomId") String roomId, MessageCreateRequest request) {
+                return messageService
+                                .saveIncomingMessage(
+                                                currentUserId, roomId, request.content(), request.type(),
+                                                request.replyTo())
+                                .chain(
+                                                savedMessage -> {
+                                                        var onlineUsers = ChatSocket.getOnlineUsers(roomId);
+                                                        notificationService.sendNotificationForMessage(savedMessage,
+                                                                        roomId, onlineUsers);
+                                                        return userEventService
+                                                                        .notifyRoomUnreadChanged(roomId, currentUserId,
+                                                                                        savedMessage.seq())
+                                                                        .chain(() -> chatBroadcaster.sendToRoom(roomId,
+                                                                                        savedMessage))
+                                                                        .replaceWith(Response.ok(savedMessage).build());
+                                                });
+        }
 
-    @POST
-    public Uni<Response> sendMessage(
-            @PathParam("roomId") String roomId, MessageCreateRequest request) {
-        return messageService
-                .saveIncomingMessage(
-                        currentUserId, roomId, request.content(), request.type(), request.replyTo())
-                .chain(
-                        savedMessage -> {
-                             var onlineUsers = ChatSocket.getOnlineUsers(roomId);
-                            notificationService.sendNotificationForMessage(savedMessage, roomId, onlineUsers);
-                            return chatBroadcaster
-                                    .sendToRoom(roomId, savedMessage)
-                                    .replaceWith(Response.ok(savedMessage).build());
-                        });
-    }
-
-    @POST
-    @Path("/{messageId}/reactions")
-    public Uni<Response> reactMessage(
-            @PathParam("roomId") String roomId,
-            @PathParam("messageId") Long messageId,
-            MessageReactRequest request) {
-        return messageService
-                .saveReaction(currentUserId, roomId, messageId, request.emoji())
-                .chain(
-                        reactionResponse -> chatBroadcaster
-                                .sendToRoom(roomId, reactionResponse)
-                                .replaceWith(Response.ok(reactionResponse).build()));
-    }
+        @POST
+        @Path("/{messageId}/reactions")
+        public Uni<Response> reactMessage(
+                        @PathParam("roomId") String roomId,
+                        @PathParam("messageId") Long messageId,
+                        MessageReactRequest request) {
+                return messageService
+                                .saveReaction(currentUserId, roomId, messageId, request.emoji())
+                                .chain(
+                                                reactionResponse -> chatBroadcaster
+                                                                .sendToRoom(roomId, reactionResponse)
+                                                                .replaceWith(Response.ok(reactionResponse).build()));
+        }
 }

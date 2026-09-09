@@ -27,21 +27,34 @@ import org.jboss.logging.Logger;
 public class ChatSocket {
 
   private static final Logger LOG = Logger.getLogger(ChatSocket.class);
-  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers =
-      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers = new ConcurrentHashMap<>();
 
-  @Inject NotificationService notificationService;
-  @Inject WebSocketConnection connection;
-  @Inject RoomService roomService;
-  @Inject ObjectMapper objectMapper;
-  @Inject UserService userService;
-  @Inject ChatBroadcaster chatBroadcaster;
+  @Inject
+  NotificationService notificationService;
+  @Inject
+  WebSocketConnection connection;
+  @Inject
+  RoomService roomService;
+  @Inject
+  ObjectMapper objectMapper;
+  @Inject
+  UserService userService;
+  @Inject
+  ChatBroadcaster chatBroadcaster;
 
-  private static final Set<EventType> FORWARDABLE_EVENTS =
-      EnumSet.of(EventType.TYPING_START, EventType.TYPING_STOP, EventType.ROOM_EFFECT);
+  private static final Set<EventType> FORWARDABLE_EVENTS = EnumSet.of(EventType.TYPING_START, EventType.TYPING_STOP,
+      EventType.ROOM_EFFECT);
 
   public static Set<UserInfo> getOnlineUsers(String roomId) {
     return roomUsers.getOrDefault(roomId, Collections.emptySet());
+  }
+
+  public static boolean isOnlineInRoom(String roomId, String username) {
+    Set<UserInfo> users = roomUsers.get(roomId);
+    if (users == null)
+      return false;
+
+    return users.stream().anyMatch(u -> u.username().equals(username));
   }
 
   @OnOpen
@@ -60,8 +73,7 @@ public class ChatSocket {
 
               var userInfo = UserInfo.fromEntity(user);
               roomUsers.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(userInfo);
-              var joinMessage =
-                  MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
+              var joinMessage = MessageResponse.createSystemMessage(userInfo.displayName() + " joined the room.");
               var onlineUsersPayload = OnlineUsersResponse.from(roomUsers.get(roomId));
 
               try {
@@ -119,8 +131,7 @@ public class ChatSocket {
 
     Set<UserInfo> users = roomUsers.get(roomId);
     if (users != null) {
-      var leavingUser =
-          users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
+      var leavingUser = users.stream().filter(u -> username.equals(u.username())).findFirst().orElse(null);
 
       users.removeIf(u -> username.equals(u.username()));
 
@@ -129,8 +140,7 @@ public class ChatSocket {
         return Uni.createFrom().voidItem();
       }
 
-      var leaveMessage =
-          MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
+      var leaveMessage = MessageResponse.createSystemMessage(leavingUser.displayName() + " left the room.");
       var updatedOnlineUsersPayload = OnlineUsersResponse.from(users);
 
       try {

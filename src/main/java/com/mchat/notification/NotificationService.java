@@ -18,7 +18,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.message.dto.response.MessageResponse;
-import com.mchat.model.Message;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.RoomService;
 
