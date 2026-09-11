@@ -18,11 +18,16 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.microprofile.jwt.Claim;
 
 @Path("/rooms/{roomId}/messages")
 @RequestScoped
 public class MessageResource {
+        Logger logger = Logger.getLogger(MessageResource.class.getName());
         @Inject
         NotificationService notificationService;
 
@@ -69,11 +74,20 @@ public class MessageResource {
                                                         var onlineUsers = ChatSocket.getOnlineUsers(roomId);
                                                         notificationService.sendNotificationForMessage(savedMessage,
                                                                         roomId, onlineUsers);
-                                                        return userEventService
-                                                                        .notifyRoomUnreadChanged(roomId, currentUserId,
+                                                        userEventService
+                                                                        .notifyRoomUnreadChanged(
+                                                                                        roomId,
+                                                                                        currentUserId,
                                                                                         savedMessage.seq())
-                                                                        .chain(() -> chatBroadcaster.sendToRoom(roomId,
-                                                                                        savedMessage))
+                                                                        .subscribe()
+                                                                        .with(
+                                                                                        ignored -> {
+                                                                                        },
+                                                                                        failure -> logger.log(
+                                                                                                        Level.SEVERE,
+                                                                                                        "Failed to notify room unread changed", failure));
+                                                        return chatBroadcaster.sendToRoom(roomId,
+                                                                        savedMessage)
                                                                         .replaceWith(Response.ok(savedMessage).build());
                                                 });
         }

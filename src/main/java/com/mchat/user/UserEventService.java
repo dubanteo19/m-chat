@@ -4,6 +4,7 @@ import com.mchat.room.RoomService;
 import com.mchat.socket.ChatSocket;
 import com.mchat.socket.UserEventBroadcaster;
 import com.mchat.user.dto.event.RoomUnreadUpdatedEvent;
+import com.mchat.user.dto.event.UserEvent;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,20 +25,22 @@ public class UserEventService {
                         String roomId,
                         Long senderId,
                         long seq) {
-                logger.info("Notifying room unread changed for roomId: " + roomId + ", senderId: " + senderId
-                                + ", seq: " + seq);
                 var roomMembers = roomService.getRoomMembers(roomId);
                 return roomMembers
                                 .invoke(members -> {
-                                        logger.info("Processing unread changed notification for roomId: " + roomId + ", members: " + members);
                                         members.stream()
                                                         .filter(member -> !member.user().id().equals(senderId))
                                                         .filter(member -> !ChatSocket.isOnlineInRoom(
                                                                         roomId,
                                                                         member.user().username()))
-                                                        .forEach(member -> broadcaster.send(
-                                                                        member.user().id(),
-                                                                        new RoomUnreadUpdatedEvent(roomId, seq)));
+                                                        .forEach(member -> {
+                                                                broadcaster.send(
+                                                                                member.user().id(),
+                                                                                UserEvent.of(ROOM_UNREAD_UPDATED,
+                                                                                                new RoomUnreadUpdatedEvent(
+                                                                                                                roomId,
+                                                                                                                seq)));
+                                                        });
                                 })
                                 .replaceWithVoid();
         }

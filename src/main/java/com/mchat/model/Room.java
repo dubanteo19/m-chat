@@ -70,6 +70,7 @@ public class Room extends PanacheEntityBase {
         select r.id,
                r.name,
                r.description,
+               r.lastSeq,
                r.lastSeq - rm.lastSeenSeq
         from Room r
         join RoomMember rm on rm.room = r
