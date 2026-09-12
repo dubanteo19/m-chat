@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.logging.Logger;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 @Path("/auth")
@@ -25,6 +26,7 @@ public class AuthResource {
   @Inject PasswordService passwordService;
   @Inject UserService userService;
   @Inject JsonWebToken jwt;
+  @ConfigProperty(name = "app.domain") String host;
 
   @POST
   @Path("/register")
@@ -35,7 +37,7 @@ public class AuthResource {
             hashedPassword -> {
               var secureRequest =
                   new UserRegisterRequest(
-                      request.username(), hashedPassword, request.displayName());
+                  request.username(), hashedPassword, request.displayName());
 
               return authService
                   .registerUser(secureRequest)
@@ -75,23 +77,23 @@ public class AuthResource {
             userInfo -> {
               String signedToken =
                   Jwt.issuer("https://dbt19.site")
-                      .upn(userInfo.username())
-                      .subject(String.valueOf(userInfo.id()))
-                      .claim("userId", userInfo.id())
-                      .groups("USER")
-                      .expiresIn(Duration.ofDays(30))
-                      .sign();
+                  .upn(userInfo.username())
+                  .subject(String.valueOf(userInfo.id()))
+                  .claim("userId", userInfo.id())
+                  .groups("USER")
+                  .expiresIn(Duration.ofDays(30))
+                  .sign();
 
               NewCookie authCookie =
                   new NewCookie.Builder("m_user")
-                      .value(signedToken)
-                      .domain("dbt19.site")
-                      .path("/")
-                      .maxAge((int) Duration.ofDays(30).toSeconds())
-                      .secure(false)
-                      .httpOnly(true)
-                      .sameSite(NewCookie.SameSite.LAX)
-                      .build();
+                  .value(signedToken)
+                  .domain(host)
+                  .path("/")
+                  .maxAge((int) Duration.ofDays(30).toSeconds())
+                  .secure(false)
+                  .httpOnly(true)
+                  .sameSite(NewCookie.SameSite.LAX)
+                  .build();
 
               return Response.ok(userInfo).cookie(authCookie).build();
             });
@@ -102,13 +104,13 @@ public class AuthResource {
   public Uni<Response> logout() {
     NewCookie authCookie =
         new NewCookie.Builder("m_user")
-            .path("/")
-            .domain("dbt19.site")
-            .maxAge(0)
-            .secure(false)
-            .httpOnly(true)
-            .sameSite(NewCookie.SameSite.LAX)
-            .build();
+        .path("/")
+        .domain(host)
+        .maxAge(0)
+        .secure(false)
+        .httpOnly(true)
+        .sameSite(NewCookie.SameSite.LAX)
+        .build();
 
     return Uni.createFrom().item(() -> Response.ok().cookie(authCookie).build());
   }
