@@ -1,15 +1,20 @@
 package com.mchat.message;
 
+import java.util.logging.Logger;
+
+import org.eclipse.microprofile.jwt.Claim;
+
 import com.mchat.message.dto.request.MessageCreateRequest;
 import com.mchat.message.dto.request.MessagePaginationRequest;
 import com.mchat.message.dto.request.MessageReactRequest;
+import com.mchat.message.event.MessageCreatedEvent;
 import com.mchat.notification.NotificationService;
 import com.mchat.socket.ChatBroadcaster;
-import com.mchat.socket.ChatSocket;
 import com.mchat.user.UserEventService;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.DELETE;
@@ -18,11 +23,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.eclipse.microprofile.jwt.Claim;
 
 @Path("/rooms/{roomId}/messages")
 @RequestScoped
@@ -40,6 +40,8 @@ public class MessageResource {
         @Inject
         @Claim("userId")
         Long currentUserId;
+        @Inject
+        Event<MessageCreatedEvent> messageEmitter;
 
         @GET
         public Uni<Response> getMessages(
@@ -67,29 +69,19 @@ public class MessageResource {
                         @PathParam("roomId") String roomId, MessageCreateRequest request) {
                 return messageService
                                 .saveIncomingMessage(
-                                                currentUserId, roomId, request.content(), request.type(),
+                                                currentUserId,
+                                                roomId,
+                                                request.content(),
+                                                request.type(),
                                                 request.replyTo())
-                                .chain(
-                                                savedMessage -> {
-                                                        var onlineUsers = ChatSocket.getOnlineUsers(roomId);
-                                                        notificationService.sendNotificationForMessage(savedMessage,
-                                                                        roomId, onlineUsers);
-                                                        userEventService
-                                                                        .notifyRoomUnreadChanged(
-                                                                                        roomId,
-                                                                                        currentUserId,
-                                                                                        savedMessage.seq())
-                                                                        .subscribe()
-                                                                        .with(
-                                                                                        ignored -> {
-                                                                                        },
-                                                                                        failure -> logger.log(
-                                                                                                        Level.SEVERE,
-                                                                                                        "Failed to notify room unread changed", failure));
-                                                        return chatBroadcaster.sendToRoom(roomId,
-                                                                        savedMessage)
-                                                                        .replaceWith(Response.ok(savedMessage).build());
-                                                });
+                                .chain(savedMessage -> chatBroadcaster
+                                                .sendToRoom(roomId, savedMessage)
+                                                .invoke(() -> messageEmitter.fire(
+                                                                MessageCreatedEvent.toEvent(
+                                                                                savedMessage,
+                                                                                roomId)))
+                                                .replaceWith(
+                                                                Response.ok(savedMessage).build()));
         }
 
         @POST

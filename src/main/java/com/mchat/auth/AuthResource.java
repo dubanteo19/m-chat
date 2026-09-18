@@ -13,6 +13,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -22,11 +23,16 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 public class AuthResource {
   Logger logger = Logger.getLogger(AuthResource.class.getName());
 
-  @Inject AuthService authService;
-  @Inject PasswordService passwordService;
-  @Inject UserService userService;
-  @Inject JsonWebToken jwt;
-  @ConfigProperty(name = "app.domain") String host;
+  @Inject
+  AuthService authService;
+  @Inject
+  PasswordService passwordService;
+  @Inject
+  UserService userService;
+  @Inject
+  JsonWebToken jwt;
+  @ConfigProperty(name = "app.domain")
+  Optional<String> host;
 
   @POST
   @Path("/register")
@@ -35,15 +41,13 @@ public class AuthResource {
         .hashPassword(request.password())
         .chain(
             hashedPassword -> {
-              var secureRequest =
-                  new UserRegisterRequest(
+              var secureRequest = new UserRegisterRequest(
                   request.username(), hashedPassword, request.displayName());
 
               return authService
                   .registerUser(secureRequest)
                   .map(
-                      userInfo ->
-                          Response.status(Response.Status.CREATED).entity(userInfo).build());
+                      userInfo -> Response.status(Response.Status.CREATED).entity(userInfo).build());
             });
   }
 
@@ -75,8 +79,7 @@ public class AuthResource {
         .loginUser(request)
         .map(
             userInfo -> {
-              String signedToken =
-                  Jwt.issuer("https://dbt19.site")
+              String signedToken = Jwt.issuer("https://dbt19.site")
                   .upn(userInfo.username())
                   .subject(String.valueOf(userInfo.id()))
                   .claim("userId", userInfo.id())
@@ -84,16 +87,19 @@ public class AuthResource {
                   .expiresIn(Duration.ofDays(30))
                   .sign();
 
-              NewCookie authCookie =
-                  new NewCookie.Builder("m_user")
+              var builder = new NewCookie.Builder("m_user")
                   .value(signedToken)
-                  .domain(host)
                   .path("/")
                   .maxAge((int) Duration.ofDays(30).toSeconds())
                   .secure(false)
                   .httpOnly(true)
-                  .sameSite(NewCookie.SameSite.LAX)
-                  .build();
+                  .sameSite(NewCookie.SameSite.LAX);
+
+              if (host.isPresent()) {
+                builder.domain(host.get());
+              }
+
+              var authCookie = builder.build();
 
               return Response.ok(userInfo).cookie(authCookie).build();
             });
@@ -102,16 +108,18 @@ public class AuthResource {
   @POST
   @Path("/logout")
   public Uni<Response> logout() {
-    NewCookie authCookie =
-        new NewCookie.Builder("m_user")
+    var builder = new NewCookie.Builder("m_user")
         .path("/")
-        .domain(host)
         .maxAge(0)
         .secure(false)
         .httpOnly(true)
-        .sameSite(NewCookie.SameSite.LAX)
-        .build();
+        .sameSite(NewCookie.SameSite.LAX);
 
+
+    if (host.isPresent()) {
+      builder.domain(host.get());
+    }
+    var authCookie = builder.build();
     return Uni.createFrom().item(() -> Response.ok().cookie(authCookie).build());
   }
 }

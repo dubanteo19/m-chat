@@ -12,6 +12,8 @@ import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 
 @Entity
@@ -27,6 +29,10 @@ public class Room extends PanacheEntityBase {
   @Column(name = "last_seq", nullable = false)
   @ColumnDefault("0")
   public Long lastSeq = 0L;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  public RoomType type;
 
   public boolean deleted = false;
   public Instant deletedAt;

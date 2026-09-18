@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -17,7 +18,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
-import com.mchat.message.dto.response.MessageResponse;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.RoomService;
 
@@ -30,6 +30,7 @@ import nl.martijndwars.webpush.PushService;
 
 @ApplicationScoped
 public class NotificationService {
+    private static final Logger logger = Logger.getLogger(NotificationService.class.getName());
 
     @Inject
     Executor executor;
@@ -63,7 +64,7 @@ public class NotificationService {
         try {
             String url = "/room/" + roomId;
             Map<String, String> payload = Map.of("title", title, "body", body, "url", url);
-            System.out.println("Sending push notification to " + recipient.username() + ": " + payload);
+            logger.info("Sending push notification to " + recipient.username() + ": " + payload);
             String json = objectMapper.writeValueAsString(payload);
 
             var notification = new Notification(
@@ -77,45 +78,46 @@ public class NotificationService {
         }
     }
 
-    public void sendNotificationForMessage(MessageResponse messageResponse, String roomId, Set<UserInfo> onlineUsers) {
+    public void sendNotificationForMessage(Set<UserInfo> onlineUsers, String roomId, Long senderId,
+            String senderDisplayname, String content) {
 
-        Set<String> onlineUsernames = (onlineUsers == null)
+        Set<Long> onlineUserId = (onlineUsers == null)
                 ? Collections.emptySet()
                 : onlineUsers.stream()
-                        .map(UserInfo::username)
+                        .map(UserInfo::id)
                         .collect(Collectors.toSet());
-        System.out.println("Online users in room " + roomId + ": " + onlineUsernames);
-        String senderUsername = messageResponse.sender().username();
+        logger.info("Online users in room " + roomId + ": " + onlineUserId);
         long now = System.currentTimeMillis();
-        Set<String> mentionedUserIds = extractMentionedUserIds(messageResponse.content());
+        Set<Long> mentionedUserIds = extractMentionedUserIds(content);
 
         roomService.getRoomPushRecipients(roomId)
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe().with(
                         recipients -> {
-                            String title = "New message from " + senderUsername;
-                            String body = messageResponse.content();
+                            String title = "New message from " + senderDisplayname;
 
                             recipients.stream()
-                                    .filter(r -> !r.username().equals(senderUsername))
-                                    .filter(r -> !onlineUsernames.contains(r.username()))
-                                    .filter(r -> !mentionedUserIds.contains(String.valueOf(r.userId())))
+                                    .filter(r -> !r.userId().equals(senderId))
+                                    .filter(r -> !onlineUserId.contains(r.userId()))
+                                    .filter(r -> !mentionedUserIds.contains(r.userId()))
                                     .filter(r -> shouldSendNotification(roomId, r.username(), now))
                                     .forEach(r -> {
-                                        sendPushSync(r, title, body, roomId);
+                                        sendPushSync(r, title, content, roomId);
                                         lastNotifiedMap.put(
                                                 getCooldownKey(roomId, r.username()),
                                                 now);
                                     });
 
                             sendMentionNotifications(
-                                    messageResponse,
+                                    senderId,
+                                    senderDisplayname,
+                                    content,
                                     roomId,
                                     recipients,
-                                    onlineUsernames,
+                                    onlineUserId,
                                     mentionedUserIds);
                         },
-                        failure -> System.err.println(
+                        failure -> logger.severe(
                                 "Failed to process notifications: " + failure.getMessage()));
     }
 
@@ -131,42 +133,43 @@ public class NotificationService {
     }
 
     private void sendMentionNotifications(
-            MessageResponse messageResponse,
+            Long senderId,
+            String senderDisplayname,
+            String content,
             String roomId,
             List<PushRecipientInfo> recipients,
-            Set<String> onlineUsernames,
-            Set<String> mentionedUserIds) {
+            Set<Long> onlineUserId,
+            Set<Long> mentionedUserIds) {
 
         if (mentionedUserIds.isEmpty()) {
             return;
         }
 
-        String senderUsername = messageResponse.sender().username();
-
         recipients.stream()
-                .filter(r -> mentionedUserIds.contains(String.valueOf(r.userId())))
-                .filter(r -> !r.username().equals(senderUsername))
-                .filter(r -> !onlineUsernames.contains(r.username()))
+                .filter(r -> mentionedUserIds.contains(r.userId()))
+                .filter(r -> !r.userId().equals(senderId))
+                .filter(r -> !onlineUserId.contains(r.userId()))
                 .forEach(r -> {
-                    String title = messageResponse.sender().displayName()
-                            + " mentioned you";
-
-                    String body = messageResponse.content();
-
+                    String title = senderDisplayname + " mentioned you";
+                    String body = content;
                     sendPushSync(r, title, body, roomId);
                 });
     }
 
-    private Set<String> extractMentionedUserIds(String content) {
+    private Set<Long> extractMentionedUserIds(String content) {
         if (content == null || content.isBlank()) {
             return Collections.emptySet();
         }
         var matcher = MENTION_PATTERN.matcher(content);
 
-        Set<String> userIds = new HashSet<>();
+        Set<Long> userIds = new HashSet<>();
 
         while (matcher.find()) {
-            userIds.add(matcher.group(1));
+            try {
+                userIds.add(Long.parseLong(matcher.group(1)));
+            } catch (NumberFormatException e) {
+                logger.warning("Invalid user ID in mention: " + matcher.group(1));
+            }
         }
 
         return userIds;
