@@ -12,11 +12,11 @@ import com.mchat.notification.NotificationService;
 import com.mchat.socket.ChatBroadcaster;
 import com.mchat.user.UserEventService;
 
+import jakarta.validation.Valid;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -45,7 +45,7 @@ public class MessageResource {
 
         @GET
         public Uni<Response> getMessages(
-                        @PathParam("roomId") String roomId, @BeanParam MessagePaginationRequest pagination) {
+                        @PathParam("roomId") String roomId, MessagePaginationRequest pagination) {
 
                 return messageService
                                 .getRoomMessagesPaginated(roomId, pagination.getLimit(), pagination.before())
@@ -66,7 +66,8 @@ public class MessageResource {
 
         @POST
         public Uni<Response> sendMessage(
-                        @PathParam("roomId") String roomId, MessageCreateRequest request) {
+                        @PathParam("roomId") String roomId,
+                        @Valid MessageCreateRequest request) {
                 return messageService
                                 .saveIncomingMessage(
                                                 currentUserId,

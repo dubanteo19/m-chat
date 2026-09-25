@@ -1,7 +1,5 @@
 package com.mchat.roommember;
 
-import org.eclipse.microprofile.jwt.JsonWebToken;
-
 import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.RoomMember;
 
@@ -15,8 +13,6 @@ import jakarta.inject.Inject;
 public class RoomMemberService {
   @Inject
   RoomMemberDbService roomMemberDbService;
-  @Inject
-  JsonWebToken jwt;
 
   @CacheInvalidate(cacheName = CacheConstants.ROOM_MEMBERS)
   public Uni<RoomMember> inviteUser(Long actorId, @CacheKey String roomId, String username) {

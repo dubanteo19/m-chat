@@ -3,6 +3,7 @@ package com.mchat.room;
 import com.mchat.model.Message;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
+import com.mchat.room.command.CreateRoomCommand;
 import com.mchat.room.dto.response.RoomInfo;
 
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
@@ -59,8 +60,8 @@ public class RoomDbService {
   }
 
   @WithTransaction
-  public Uni<Room> createAndJoinRoom(String name, String description, Long creatorId) {
-    return Room.createAndJoin(name, description, creatorId);
+  public Uni<Room> createAndJoinRoom(CreateRoomCommand command) {
+    return Room.createAndJoin(command.name(), command.description(), command.userId());
   }
 
   @WithTransaction

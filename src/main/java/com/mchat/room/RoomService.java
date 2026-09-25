@@ -9,6 +9,9 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.RoomRole;
 import com.mchat.notification.dto.response.PushRecipientInfo;
+import com.mchat.room.command.CreateRoomCommand;
+import com.mchat.room.command.DeleteRoomCommand;
+import com.mchat.room.command.ReadRoomCommand;
 import com.mchat.room.dto.request.CreateRoomRequest;
 import com.mchat.room.dto.response.RoomInfo;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
@@ -44,19 +47,19 @@ public class RoomService {
         .map(RoomInfo::fromEntity);
   }
 
-  public Uni<RoomInfo> create(Long userId, CreateRoomRequest request) {
-    return roomDbService.createAndJoinRoom(request.name(), request.description(), userId)
+  public Uni<RoomInfo> create(CreateRoomCommand command) {
+    return roomDbService.createAndJoinRoom(command)
         .map(RoomInfo::fromEntity);
   }
 
-  public Uni<Boolean> delete(Long userId, String roomId) {
-    return roomDbService.findMember(roomId, userId)
+  public Uni<Boolean> delete(DeleteRoomCommand command) {
+    return roomDbService.findMember(command.roomId(), command.userId())
         .chain(member -> {
           if (member == null || member.role != RoomRole.MASTER) {
             throw new WebApplicationException("Only the room master can delete this room",
                 Response.Status.FORBIDDEN);
           }
-          return roomDbService.softDeleteRoom(roomId);
+          return roomDbService.softDeleteRoom(command.roomId());
         });
   };
 
@@ -81,7 +84,7 @@ public class RoomService {
             .toList());
   }
 
-  public Uni<Void> read(Long userId, String roomId, Long seq) {
-    return roomDbService.read(userId, roomId, seq);
+  public Uni<Void> read(ReadRoomCommand command) {
+    return roomDbService.read(command.userId(), command.roomId(), command.seq());
   }
 }

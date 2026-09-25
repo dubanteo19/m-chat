@@ -1,13 +1,16 @@
 package com.mchat.storage;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.microprofile.jwt.Claim;
 import org.jboss.logging.Logger;
 
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -15,8 +18,13 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 
 @Path("/storage")
+@RequestScoped
 public class StorageResource {
   private static final Logger LOG = Logger.getLogger(StorageResource.class);
+
+  @Inject
+  @Claim("userId")
+  Long currentUserId;
 
   @Inject
   MinioClient minioClient;
@@ -26,8 +34,15 @@ public class StorageResource {
 
   @GET
   @Path("/presigned-url")
-  public Response getPresignedUrl(@QueryParam("filename") String filename) {
+  public Response getPresignedUrl(@QueryParam("filename") String filename, @QueryParam("type") String type) {
     LOG.info("request presign url for file: " + filename);
+    String prefix = switch (type) {
+      case "AVATAR" -> "avatars/" + currentUserId + "/";
+      case "IMAGE" -> "images/";
+      case "STICKER" -> "draft/stickers/" + currentUserId + "/";
+      default -> "images/";
+    };
+
     if (filename == null || filename.trim().isEmpty()) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(Map.of("error", "Query parameter 'filename' is required"))
@@ -35,15 +50,17 @@ public class StorageResource {
     }
     try {
       // Generate a secure PUT URL for direct frontend client uploads
+      String extension = filename.substring(filename.lastIndexOf("."));
+      String objectKey = prefix + UUID.randomUUID().toString() + extension;
       String uploadUrl = minioClient.getPresignedObjectUrl(
           GetPresignedObjectUrlArgs.builder()
               .method(Method.PUT)
               .bucket(BUCKET_NAME)
-              .object(filename)
+              .object(objectKey)
               .expiry(5, TimeUnit.MINUTES)
               .build());
 
-      String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + filename;
+      String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + objectKey;
       return Response.ok(
           Map.of(
               "uploadUrl", uploadUrl,

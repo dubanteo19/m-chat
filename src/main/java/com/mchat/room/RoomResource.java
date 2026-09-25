@@ -38,12 +38,14 @@ public class RoomResource {
   @Path("/{roomId}/read")
   public Uni<Response> read(
       @PathParam("roomId") String roomId, ReadRoomRequest request) {
-    return roomService.read(currentUserId, roomId, request.seq()).map(payload -> Response.noContent().build());
+    var command = request.toCommand(currentUserId, roomId);
+    return roomService.read(command).map(payload -> Response.noContent().build());
   }
 
   @POST
   public Uni<Response> create(CreateRoomRequest request) {
-    return roomService.create(currentUserId, request).map(payload -> Response.ok(payload).build());
+    var command = request.toCommand(currentUserId);
+    return roomService.create(command).map(payload -> Response.ok(payload).build());
   }
 
   @DELETE

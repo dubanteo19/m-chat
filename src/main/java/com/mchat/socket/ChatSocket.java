@@ -101,9 +101,7 @@ public class ChatSocket {
 
     try {
       var jsonNode = objectMapper.readTree(payload);
-
       var eventType = EventType.valueOf(jsonNode.get("eventType").asText().toUpperCase());
-
       // --- TYPING STATUS INDICATORS ---
       if (EventType.PING.equals(eventType)) {
         return Uni.createFrom().voidItem();
