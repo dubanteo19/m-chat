@@ -30,6 +30,9 @@ public class StickerPackage extends PanacheEntity {
     @Column(nullable = false, length = 20)
     public StickerPackageStatus status = StickerPackageStatus.DRAFT;
 
+    @Column(nullable = false)
+    public boolean deleted = false;
+
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 

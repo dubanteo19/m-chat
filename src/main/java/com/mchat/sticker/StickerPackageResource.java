@@ -1,9 +1,12 @@
 package com.mchat.sticker;
 
+import org.eclipse.microprofile.jwt.Claim;
+
 import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -13,9 +16,16 @@ import jakarta.ws.rs.core.Response;
 @RequestScoped
 public class StickerPackageResource {
 
+        @Inject
+        @Claim("userId")
+        Long currentUserId;
+        @Inject
+        StickerPackageService stickerPackageService;
+
         @POST
         public Uni<Response> createPackage(CreateStickerPackageRequest request) {
-                throw new UnsupportedOperationException("Not implemented yet");
+                return stickerPackageService.create(currentUserId, request)
+                                .map(packageId -> Response.status(Response.Status.CREATED).entity(packageId).build());
         }
 
         @POST

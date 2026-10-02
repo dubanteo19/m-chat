@@ -52,14 +52,14 @@ public class RoomService {
         .map(RoomInfo::fromEntity);
   }
 
-  public Uni<Boolean> delete(DeleteRoomCommand command) {
-    return roomDbService.findMember(command.roomId(), command.userId())
+  public Uni<Boolean> delete(Long userId, String roomId) {
+    return roomDbService.findMember(roomId, userId)
         .chain(member -> {
           if (member == null || member.role != RoomRole.MASTER) {
             throw new WebApplicationException("Only the room master can delete this room",
                 Response.Status.FORBIDDEN);
           }
-          return roomDbService.softDeleteRoom(command.roomId());
+          return roomDbService.softDeleteRoom(roomId);
         });
   };
 
