@@ -1,76 +1,39 @@
 package com.mchat.storage;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import org.eclipse.microprofile.jwt.Claim;
-import org.jboss.logging.Logger;
-
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.MinioClient;
-import io.minio.http.Method;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
+import org.eclipse.microprofile.jwt.Claim;
+import org.jboss.logging.Logger;
 
 @Path("/storage")
 @RequestScoped
 public class StorageResource {
+
   private static final Logger LOG = Logger.getLogger(StorageResource.class);
 
   @Inject
   @Claim("userId")
   Long currentUserId;
 
-  @Inject
-  MinioClient minioClient;
-
-  private static final String BUCKET_NAME = "mchat-public";
-  private static final String MINIO_EXTERNAL_URL = "https://minio.dbt19.site";
+  @Inject StorageService storageService;
 
   @GET
   @Path("/presigned-url")
-  public Response getPresignedUrl(@QueryParam("filename") String filename, @QueryParam("type") String type) {
-    LOG.info("request presign url for file: " + filename);
-    String prefix = switch (type) {
-      case "AVATAR" -> "avatars/" + currentUserId + "/";
-      case "IMAGE" -> "images/";
-      case "STICKER" -> "draft/stickers/" + currentUserId + "/";
-      default -> "images/";
-    };
+  public Response getPresignedUrl(
+      @QueryParam("filename") String filename, @QueryParam("type") String type) {
 
-    if (filename == null || filename.trim().isEmpty()) {
+    if (filename == null || filename.isBlank()) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(Map.of("error", "Query parameter 'filename' is required"))
           .build();
     }
-    try {
-      // Generate a secure PUT URL for direct frontend client uploads
-      String extension = filename.substring(filename.lastIndexOf("."));
-      String objectKey = prefix + UUID.randomUUID().toString() + extension;
-      String uploadUrl = minioClient.getPresignedObjectUrl(
-          GetPresignedObjectUrlArgs.builder()
-              .method(Method.PUT)
-              .bucket(BUCKET_NAME)
-              .object(objectKey)
-              .expiry(5, TimeUnit.MINUTES)
-              .build());
-
-      String downloadUrl = MINIO_EXTERNAL_URL + "/" + BUCKET_NAME + "/" + objectKey;
-      return Response.ok(
-          Map.of(
-              "uploadUrl", uploadUrl,
-              "downloadUrl", downloadUrl))
-          .build();
-
-    } catch (Exception e) {
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(Map.of("error", "Could not generate security token"))
-          .build();
-    }
+    LOG.infof("Request presigned URL for file: %s", filename);
+    var result = storageService.createPresignedUploadUrl(currentUserId, filename, type);
+    return Response.ok(result).build();
   }
 }
