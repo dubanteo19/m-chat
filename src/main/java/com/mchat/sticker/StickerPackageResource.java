@@ -47,7 +47,7 @@ public class StickerPackageResource {
                         @PathParam("packageId") Long packageId, CreateStickerRequest request) {
                 return stickerPackageService.addSticker(currentUserId, packageId, request)
                                 .invoke((stickerId) -> eventEmitter
-                                                .fire(new StickerProcessingEvent(stickerId, request.url())))
+                                                .fire(new StickerProcessingEvent(stickerId, request.objectKey())))
                                 .map(stickerId -> Response.status(Response.Status.CREATED).entity(stickerId).build());
         }
 

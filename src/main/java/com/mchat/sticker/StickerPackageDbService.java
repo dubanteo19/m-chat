@@ -42,7 +42,8 @@ public class StickerPackageDbService {
           sticker.packageId = packageId;
           sticker.createdAt = Instant.now();
           sticker.updatedAt = Instant.now();
-          return sticker.persist().replaceWith(sticker.id);
+          return sticker.persist()
+              .map(ignored -> sticker.id);
         });
   }
 }

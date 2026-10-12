@@ -83,7 +83,7 @@ public class StorageService {
     return switch (type) {
       case "AVATAR" -> "avatars/" + userId + "/";
       case "IMAGE" -> "images/";
-      case "STICKER" -> "draft/stickers/" + userId + "/";
+      case "STICKER" -> "draft/stickers/user-" + userId + "/";
       default -> "images/";
     };
   }
