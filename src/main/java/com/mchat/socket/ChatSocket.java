@@ -5,7 +5,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +16,7 @@ import com.mchat.room.dto.response.OnlineUsersResponse;
 import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
 
+import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
@@ -28,7 +28,6 @@ import jakarta.inject.Inject;
 @WebSocket(path = "/chat/{roomId}/{username}")
 public class ChatSocket {
 
-  private static final Logger LOG = Logger.getLogger(ChatSocket.class);
   private static final ConcurrentHashMap<String, Set<UserInfo>> roomUsers = new ConcurrentHashMap<>();
 
   @Inject
@@ -60,7 +59,7 @@ public class ChatSocket {
   public Uni<Void> onOpen() {
     String username = connection.pathParam("username");
     String roomId = connection.pathParam("roomId");
-    LOG.info(username + " connecting to room: " + roomId);
+    Log.infof("%s connecting to room: %s", username, roomId);
 
     return userService
         .findByUsername(username)
@@ -107,7 +106,7 @@ public class ChatSocket {
       }
 
       // --- FORWARDABLE EVENTS ---
-      LOG.info("Forwarding event " + eventType + " from user " + username + " in room " + roomId);
+      Log.infof("Forwarding event %s from user %s in room %s", eventType, username, roomId);
       return chatBroadcaster.sendToRoom(roomId, payload);
 
     } catch (Exception e) {
@@ -120,7 +119,7 @@ public class ChatSocket {
   public Uni<Void> onClose() {
     String username = connection.pathParam("username");
     String roomId = connection.pathParam("roomId");
-    LOG.info(username + " left room: " + roomId);
+    Log.infof("%s left room: %s", username, roomId);
 
     if (roomId == null || username == null) {
       return Uni.createFrom().voidItem();
@@ -151,7 +150,7 @@ public class ChatSocket {
         return Uni.combine().all().unis(broadcastLeaveAlert, broadcastUpdatedList).discardItems();
 
       } catch (JsonProcessingException e) {
-        LOG.error("Failed to serialize leave/user-list payloads", e);
+        Log.error("Failed to serialize leave/user-list payloads", e);
         return Uni.createFrom().failure(e);
       }
     }

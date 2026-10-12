@@ -2,7 +2,6 @@ package com.mchat.room;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Logger;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
@@ -16,6 +15,7 @@ import com.mchat.roommember.dto.response.RoomMemberInfo;
 import com.mchat.user.UserService;
 
 import io.quarkus.cache.CacheResult;
+import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -25,7 +25,6 @@ import jakarta.ws.rs.core.Response;
 
 @ApplicationScoped
 public class RoomService {
-  Logger logger = Logger.getLogger(RoomService.class.getName());
   @Inject
   RoomDbService roomDbService;
   @Inject
@@ -63,7 +62,7 @@ public class RoomService {
 
   @CacheResult(cacheName = "room-members")
   public Uni<List<RoomMemberInfo>> getRoomMembers(String roomId) {
-    logger.info("CACHE MISS! Fetching from DB layer for roomId: " + roomId);
+    Log.infof("CACHE MISS! Fetching from DB layer for roomId: %s", roomId);
     return roomDbService.findMembersByRoom(roomId)
         .map(members -> members.stream().map(RoomMemberInfo::fromEntity).toList());
   }

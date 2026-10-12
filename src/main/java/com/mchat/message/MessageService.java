@@ -12,11 +12,9 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.logging.Logger;
 
 @ApplicationScoped
 public class MessageService {
-    Logger logger = Logger.getLogger(MessageService.class.getName());
     @Inject
     RoomDbService roomDbService;
     @Inject

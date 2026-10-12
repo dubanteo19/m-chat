@@ -3,6 +3,8 @@ package com.mchat.auth;
 import com.mchat.auth.dto.request.UserLoginRequest;
 import com.mchat.auth.dto.request.UserRegisterRequest;
 import com.mchat.user.UserService;
+
+import io.quarkus.logging.Log;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
@@ -14,14 +16,12 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.logging.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 @Path("/auth")
 @RequestScoped
 public class AuthResource {
-  Logger logger = Logger.getLogger(AuthResource.class.getName());
 
   @Inject
   AuthService authService;
@@ -57,7 +57,7 @@ public class AuthResource {
   public Uni<Response> me() {
     String username = jwt.getName();
     if (username == null) {
-      logger.warning("No valid session found.");
+      Log.warn("No valid session found.");
       return Uni.createFrom().item(Response.status(Response.Status.UNAUTHORIZED).build());
     }
 
@@ -68,7 +68,7 @@ public class AuthResource {
               if (userInfo == null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
               }
-              logger.info("User info retrieved for username: " + username);
+              Log.infof("User info retrieved for username: %s", username);
               return Response.ok(userInfo).build();
             });
   }

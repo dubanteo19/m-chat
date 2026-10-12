@@ -68,7 +68,7 @@ public class StorageService {
       String downloadUrl =
           "http://" + minioHost + ":" + minioPort + "/" + BUCKET_NAME + "/" + objectKey;
 
-      return new PresignedUrl(uploadUrl, downloadUrl);
+      return new PresignedUrl(uploadUrl, downloadUrl, objectKey);
 
     } catch (Exception e) {
       throw new StorageException("Could not generate presigned URL", e.getCause());

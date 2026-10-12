@@ -1,7 +1,6 @@
 package com.mchat.user;
 
 import java.util.List;
-import java.util.logging.Logger;
 
 import com.mchat.auth.dto.response.CurrentUserInfo;
 import com.mchat.auth.dto.response.UserInfo;
@@ -14,13 +13,13 @@ import com.mchat.user.dto.request.UpdateProfileRequest;
 import io.quarkus.cache.CacheInvalidate;
 import io.quarkus.cache.CacheKey;
 import io.quarkus.cache.CacheResult;
+import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class UserService {
-  Logger logger = Logger.getLogger(UserService.class.getName());
 
   @Inject
   UserDbService userDbService;
@@ -45,13 +44,13 @@ public class UserService {
 
   @CacheResult(cacheName = CacheConstants.USER_INFO_BY_ID)
   public Uni<UserInfo> getUserInfoById(Long userId) {
-    logger.info("CACHE MISS! Fetching from DB layer for userId: " + userId);
+    Log.info("CACHE MISS! Fetching from DB layer for %d: " + userId);
     return userDbService.findRequiredById(userId).map(UserInfo::fromEntity);
   }
 
   @CacheResult(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)
   public Uni<CurrentUserInfo> getCurrentUserInfoById(Long userId) {
-    logger.info("CACHE MISS! Fetching from DB layer for current user userId: " + userId);
+    Log.info("CACHE MISS! Fetching from DB layer for current user %d: " + userId);
     return userDbService.findRequiredById(userId).map(CurrentUserInfo::fromEntity);
   }
 

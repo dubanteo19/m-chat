@@ -1,6 +1,6 @@
 package com.mchat.event;
 
 public record StickerProcessingEvent(
-                Long stickerId,
-                String url) {
+        Long stickerId,
+        String objectKey) {
 }

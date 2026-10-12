@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -21,6 +20,7 @@ import com.mchat.auth.dto.response.UserInfo;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.RoomService;
 
+import io.quarkus.logging.Log;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -30,7 +30,6 @@ import nl.martijndwars.webpush.PushService;
 
 @ApplicationScoped
 public class NotificationService {
-    private static final Logger logger = Logger.getLogger(NotificationService.class.getName());
 
     @Inject
     Executor executor;
@@ -64,7 +63,7 @@ public class NotificationService {
         try {
             String url = "/room/" + roomId;
             Map<String, String> payload = Map.of("title", title, "body", body, "url", url);
-            logger.info("Sending push notification to " + recipient.username() + ": " + payload);
+            Log.infof("Sending push notification to %s: %s", recipient.username(), payload);
             String json = objectMapper.writeValueAsString(payload);
 
             var notification = new Notification(
@@ -86,7 +85,7 @@ public class NotificationService {
                 : onlineUsers.stream()
                         .map(UserInfo::id)
                         .collect(Collectors.toSet());
-        logger.info("Online users in room " + roomId + ": " + onlineUserId);
+        Log.infof("Online users in room %s: %s", roomId, onlineUserId);
         long now = System.currentTimeMillis();
         Set<Long> mentionedUserIds = extractMentionedUserIds(content);
 
@@ -117,8 +116,8 @@ public class NotificationService {
                                     onlineUserId,
                                     mentionedUserIds);
                         },
-                        failure -> logger.severe(
-                                "Failed to process notifications: " + failure.getMessage()));
+                        failure -> Log.errorf(
+                                "Failed to process notifications: %s", failure.getMessage()));
     }
 
     private boolean shouldSendNotification(String roomId, String username, long now) {
@@ -168,7 +167,7 @@ public class NotificationService {
             try {
                 userIds.add(Long.parseLong(matcher.group(1)));
             } catch (NumberFormatException e) {
-                logger.warning("Invalid user ID in mention: " + matcher.group(1));
+                Log.warnf("Invalid user ID in mention: %s", matcher.group(1));
             }
         }
 

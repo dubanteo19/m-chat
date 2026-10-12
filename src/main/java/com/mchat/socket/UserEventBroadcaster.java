@@ -2,10 +2,10 @@ package com.mchat.socket;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 import com.mchat.user.dto.event.UserEvent;
 
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
@@ -16,15 +16,13 @@ import jakarta.ws.rs.sse.SseEventSink;
 public class UserEventBroadcaster {
     @Inject
     Sse sse;
-    Logger logger = Logger.getLogger(UserEventBroadcaster.class.getName());
     private final ConcurrentHashMap<Long, Set<SseEventSink>> connections = new ConcurrentHashMap<>();
 
     public void add(Long userId, SseEventSink sink) {
         connections
                 .computeIfAbsent(userId, k -> ConcurrentHashMap.newKeySet())
                 .add(sink);
-        logger.info("Added new connection for userId: " + userId + ", total connections: "
-                + connections.get(userId).size());
+        Log.infof("Added new connection for userId: %s, total connections: %s", userId, connections.get(userId).size());
     }
 
     public void remove(Long userId, SseEventSink sink) {

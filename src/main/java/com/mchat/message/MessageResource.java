@@ -1,7 +1,5 @@
 package com.mchat.message;
 
-import java.util.logging.Logger;
-
 import org.eclipse.microprofile.jwt.Claim;
 
 import com.mchat.message.dto.request.MessageCreateRequest;
@@ -27,7 +25,6 @@ import jakarta.ws.rs.core.Response;
 @Path("/rooms/{roomId}/messages")
 @RequestScoped
 public class MessageResource {
-        Logger logger = Logger.getLogger(MessageResource.class.getName());
         @Inject
         NotificationService notificationService;
 

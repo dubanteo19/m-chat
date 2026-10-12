@@ -9,11 +9,9 @@ import com.mchat.user.dto.event.UserEvent;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.logging.Logger;
 
 @ApplicationScoped
 public class UserEventService {
-        Logger logger = Logger.getLogger(UserEventService.class.getName());
         public static final String ROOM_UPDATED = "ROOM_UPDATED";
         public static final String ROOM_UNREAD_UPDATED = "ROOM_UNREAD_UPDATED";
         @Inject
