@@ -1,5 +1,12 @@
 package com.mchat.socket;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import org.jboss.logging.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchat.auth.dto.response.UserInfo;
@@ -9,6 +16,7 @@ import com.mchat.room.RoomService;
 import com.mchat.room.dto.response.OnlineUsersResponse;
 import com.mchat.socket.dto.EventType;
 import com.mchat.user.UserService;
+
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
@@ -16,12 +24,6 @@ import io.quarkus.websockets.next.WebSocket;
 import io.quarkus.websockets.next.WebSocketConnection;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import org.jboss.logging.Logger;
 
 @WebSocket(path = "/chat/{roomId}/{username}")
 public class ChatSocket {
@@ -41,9 +43,6 @@ public class ChatSocket {
   UserService userService;
   @Inject
   ChatBroadcaster chatBroadcaster;
-
-  private static final Set<EventType> FORWARDABLE_EVENTS = EnumSet.of(EventType.TYPING_START, EventType.TYPING_STOP,
-      EventType.ROOM_EFFECT);
 
   public static Set<UserInfo> getOnlineUsers(String roomId) {
     return roomUsers.getOrDefault(roomId, Collections.emptySet());

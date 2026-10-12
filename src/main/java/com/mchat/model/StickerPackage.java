@@ -1,8 +1,10 @@
 package com.mchat.model;
 
 import java.time.Instant;
+import java.util.List;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,4 +40,12 @@ public class StickerPackage extends PanacheEntity {
 
     @Column(name = "updated_at", nullable = false)
     public Instant updatedAt;
+
+    public static Uni<List<StickerPackage>> findByUserId(Long userId) {
+        return StickerPackage.find("ownerId = ?1 and deleted = false", userId).list();
+    }
+
+    public static Uni<StickerPackage> findByIdAndOwnerId(Long id, Long userId) {
+        return StickerPackage.find("ownerId = ?1 and id = ?2 and deleted = false", userId, id).firstResult();
+    }
 }

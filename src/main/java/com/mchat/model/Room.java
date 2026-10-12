@@ -32,7 +32,7 @@ public class Room extends PanacheEntityBase {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  public RoomType type;
+  public RoomType type = RoomType.GROUP;
 
   public boolean deleted = false;
   public Instant deletedAt;
@@ -71,7 +71,7 @@ public class Room extends PanacheEntityBase {
     return room;
   }
 
-  public static Uni<List<RoomInfo>> findRoomsByUser(Long userId) {
+  public static Uni<List<RoomInfo>> findByUserId(Long userId) {
     return Room.find("""
         select r.id,
                r.name,

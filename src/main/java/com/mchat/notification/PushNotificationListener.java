@@ -1,6 +1,6 @@
-package com.mchat.message.event;
+package com.mchat.notification;
 
-import com.mchat.notification.NotificationService;
+import com.mchat.event.MessageCreatedEvent;
 import com.mchat.socket.ChatSocket;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,7 +23,6 @@ public class PushNotificationListener {
                 event.roomId(),
                 event.senderId(),
                 event.senderDisplayname(),
-                event.previewContent()
-            );
+                event.previewContent());
     }
 }

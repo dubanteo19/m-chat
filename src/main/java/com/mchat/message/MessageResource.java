@@ -7,7 +7,7 @@ import org.eclipse.microprofile.jwt.Claim;
 import com.mchat.message.dto.request.MessageCreateRequest;
 import com.mchat.message.dto.request.MessagePaginationRequest;
 import com.mchat.message.dto.request.MessageReactRequest;
-import com.mchat.message.event.MessageCreatedEvent;
+import com.mchat.event.MessageCreatedEvent;
 import com.mchat.notification.NotificationService;
 import com.mchat.socket.ChatBroadcaster;
 import com.mchat.user.UserEventService;
@@ -41,7 +41,7 @@ public class MessageResource {
         @Claim("userId")
         Long currentUserId;
         @Inject
-        Event<MessageCreatedEvent> messageEmitter;
+        Event<MessageCreatedEvent> eventEmitter;
 
         @GET
         public Uni<Response> getMessages(
@@ -77,7 +77,7 @@ public class MessageResource {
                                                 request.replyTo())
                                 .chain(savedMessage -> chatBroadcaster
                                                 .sendToRoom(roomId, savedMessage)
-                                                .invoke(() -> messageEmitter.fire(
+                                                .invoke(() -> eventEmitter.fire(
                                                                 MessageCreatedEvent.toEvent(
                                                                                 savedMessage,
                                                                                 roomId)))

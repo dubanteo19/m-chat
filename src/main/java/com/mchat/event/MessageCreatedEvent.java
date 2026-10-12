@@ -1,4 +1,4 @@
-package com.mchat.message.event;
+package com.mchat.event;
 
 import com.mchat.message.dto.response.MessageResponse;
 import com.mchat.model.MessageType;

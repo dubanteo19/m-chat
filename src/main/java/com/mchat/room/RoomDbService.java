@@ -50,7 +50,7 @@ public class RoomDbService {
 
   @WithSession
   public Uni<List<RoomInfo>> findRoomsByUserId(Long userId) {
-    return Room.findRoomsByUser(userId);
+    return Room.findByUserId(userId);
   }
 
   @WithSession
