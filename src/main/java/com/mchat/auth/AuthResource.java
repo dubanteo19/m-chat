@@ -31,6 +31,7 @@ public class AuthResource {
   UserService userService;
   @Inject
   JsonWebToken jwt;
+
   @ConfigProperty(name = "app.domain")
   Optional<String> host;
 

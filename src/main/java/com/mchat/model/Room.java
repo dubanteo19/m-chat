@@ -1,13 +1,7 @@
 package com.mchat.model;
 
-import java.time.Instant;
-import java.util.List;
-
-import org.hibernate.annotations.ColumnDefault;
-
 import com.github.slugify.Slugify;
 import com.mchat.room.dto.response.RoomInfo;
-
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
@@ -15,12 +9,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import java.time.Instant;
+import java.util.List;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 public class Room extends PanacheEntityBase {
   private static final Slugify SLUGIFY = Slugify.builder().build();
-  @Id
-  public String id;
+  @Id public String id;
 
   public String name;
   public String description;
@@ -41,25 +37,27 @@ public class Room extends PanacheEntityBase {
     var room = Room.create(name, description);
 
     return room.<Room>persist()
-        .chain(savedRoom -> {
-          User userProxy = new User(creatorId);
-          var master = new RoomMember(savedRoom, userProxy, RoomRole.MASTER);
-          return master.persist().replaceWith(savedRoom);
-        });
+        .chain(
+            savedRoom -> {
+              User userProxy = new User(creatorId);
+              var master = new RoomMember(savedRoom, userProxy, RoomRole.MASTER);
+              return master.persist().replaceWith(savedRoom);
+            });
   }
 
   // --- Soft Delete Method ---
   public static Uni<Boolean> softDeleteRoom(String roomId) {
     return Room.<Room>findById(roomId)
-        .chain(room -> {
-          if (room == null || room.deleted) {
-            return Uni.createFrom().item(false);
-          }
-          room.deleted = true;
-          room.deletedAt = Instant.now();
+        .chain(
+            room -> {
+              if (room == null || room.deleted) {
+                return Uni.createFrom().item(false);
+              }
+              room.deleted = true;
+              room.deletedAt = Instant.now();
 
-          return Uni.createFrom().item(true);
-        });
+              return Uni.createFrom().item(true);
+            });
   }
 
   public static Room create(String name, String description) {
@@ -89,8 +87,10 @@ public class Room extends PanacheEntityBase {
 
   public static Uni<Long> incrementAndGetSeq(String roomId) {
     return update("lastSeq = lastSeq + 1 where id = ?1", roomId)
-        .chain(() -> find("select r.lastSeq from Room r where r.id = ?1", roomId)
-            .project(Long.class)
-            .firstResult());
+        .chain(
+            () ->
+                find("select r.lastSeq from Room r where r.id = ?1", roomId)
+                    .project(Long.class)
+                    .firstResult());
   }
 }
