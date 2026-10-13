@@ -1,14 +1,15 @@
 package com.mchat.sticker;
 
 import org.eclipse.microprofile.jwt.Claim;
+import org.eclipse.microprofile.reactive.messaging.Channel;
 
-import com.mchat.event.StickerProcessingEvent;
+import com.mchat.event.StickerProcessingJob;
 import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
 import com.mchat.sticker.dto.request.CreateStickerRequest;
 
 import io.smallrye.mutiny.Uni;
+import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -26,7 +27,8 @@ public class StickerPackageResource {
         @Inject
         StickerPackageService stickerPackageService;
         @Inject
-        Event<StickerProcessingEvent> eventEmitter;
+        @Channel("sticker-jobs-out")
+        MutinyEmitter<StickerProcessingJob> jobEmitter;
 
         @POST
         public Uni<Response> createPackage(CreateStickerPackageRequest request) {
@@ -45,10 +47,16 @@ public class StickerPackageResource {
         @Path("/{packageId}/stickers")
         public Uni<Response> addSticker(
                         @PathParam("packageId") Long packageId, CreateStickerRequest request) {
-                return stickerPackageService.addSticker(currentUserId, packageId, request)
-                                .invoke((stickerId) -> eventEmitter
-                                                .fire(new StickerProcessingEvent(stickerId, request.objectKey())))
-                                .map(stickerId -> Response.status(Response.Status.CREATED).entity(stickerId).build());
+                return stickerPackageService
+                                .addSticker(currentUserId, packageId, request)
+                                .chain(stickerId -> {
+                                        var job = new StickerProcessingJob(stickerId, packageId, request.objectKey());
+                                        return jobEmitter.send(job).replaceWith(stickerId);
+                                })
+                                .map(stickerId -> Response
+                                                .status(Response.Status.CREATED)
+                                                .entity(stickerId)
+                                                .build());
         }
 
 }

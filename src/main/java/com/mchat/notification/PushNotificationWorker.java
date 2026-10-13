@@ -8,7 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-public class PushNotificationListener {
+public class PushNotificationWorker {
 
     @Inject
     NotificationService notificationService;
