@@ -1,8 +1,6 @@
 
 package com.mchat.deg;
 
-import org.jboss.logging.Logger;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.inject.Inject;
@@ -19,8 +17,6 @@ import jakarta.ws.rs.sse.SseEventSink;
 @Path("/debug")
 @Consumes(MediaType.APPLICATION_JSON)
 public class DebugResource {
-
-    private static final Logger LOG = Logger.getLogger(DebugResource.class);
 
     @Inject
     ObjectMapper objectMapper;
@@ -40,7 +36,6 @@ public class DebugResource {
             message = body;
         }
 
-        LOG.infof("[REMOTE DEBUG]\n%s", message);
         logHub.publish(message);
 
         return Response.ok().build();

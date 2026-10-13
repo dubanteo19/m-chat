@@ -21,15 +21,15 @@ public class StickerProcessingWorker {
     @Inject
     StickerService stickerService;
 
-    @Incoming("job-requests")
-    public Uni<Void> processSticker(Message<StickerProcessingJob> message) {
-        var job = message.getPayload();
-        Log.infof("Received sticker processing job: %s", job);
-        return Uni.createFrom().item(() -> processStickerImage(job))
-                .chain(processed -> stickerService.markAsReady(job.stickerId(), processed.outputKey(),
-                        processed.width(), processed.height()))
-                .replaceWithVoid();
-    }
+    // @Incoming("job-requests")
+    // public Uni<Void> processSticker(Message<StickerProcessingJob> message) {
+    //     var job = message.getPayload();
+    //     Log.infof("Received sticker processing job: %s", job);
+    //     return Uni.createFrom().item(() -> processStickerImage(job))
+    //             .chain(processed -> stickerService.markAsReady(job.stickerId(), processed.outputKey(),
+    //                     processed.width(), processed.height()))
+    //             .replaceWithVoid();
+    // }
 
     private ProcessedSticker processStickerImage(StickerProcessingJob job) {
         try (var input = storageService.downloadObject(job.objectKey())) {
