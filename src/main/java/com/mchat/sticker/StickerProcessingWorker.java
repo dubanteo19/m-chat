@@ -2,7 +2,6 @@ package com.mchat.sticker;
 
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Channel;
-import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 import com.mchat.event.StickerProcessedJob;
@@ -11,6 +10,7 @@ import com.mchat.storage.StorageService;
 
 import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,23 +29,18 @@ public class StickerProcessingWorker {
     @Channel("sticker-processed-out")
     MutinyEmitter<StickerProcessedJob> jobEmitter;
 
-    @Incoming("job-requests")
-    @Acknowledgment(Acknowledgment.Strategy.POST_PROCESSING)
+    @Incoming("sticker-job-requests")
     public Uni<Void> processSticker(StickerProcessingJob job) {
         Log.infof("Processing image for sticker: %s", job.stickerId());
         return Uni.createFrom().item(() -> processStickerImage(job))
-                .chain(processedSticker -> jobEmitter.send(
-                        new StickerProcessedJob(
-                                job.stickerId(),
-                                processedSticker.outputKey(),
-                                processedSticker.width(),
-                                processedSticker.height())))
+                .chain(processedSticker -> jobEmitter.send(new StickerProcessedJob(job.stickerId(),
+                        processedSticker.outputKey(), processedSticker.width(), processedSticker.height())))
                 .replaceWithVoid();
     }
 
     private ProcessedSticker processStickerImage(StickerProcessingJob job) {
         try (var input = storageService.downloadObject(job.objectKey())) {
-            Log.infof("Processing sticker %s for package %s", job.stickerId(), job.packageId());
+            Log.infof("Processing sticker %s for package %s object: %s", job.stickerId(), job.packageId(), job.objectKey());
             var image = imageProcessor.process(input);
             String outputKey = "stickers/" + job.packageId() + "/" + job.stickerId() + ".webp";
             Log.infof("Uploading processed sticker %s to %s", job.stickerId(), outputKey);

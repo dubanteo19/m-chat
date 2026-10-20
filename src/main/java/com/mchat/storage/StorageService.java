@@ -19,11 +19,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class StorageService {
 
-  private static final String BUCKET_NAME = "mchat-public";
   private static final int UPLOAD_URL_EXPIRY_MINUTES = 5;
 
   @Inject
   MinioClient minioClient;
+
+  @ConfigProperty(name = "app.bucket")
+  String bucketName;
 
   @ConfigProperty(name = "quarkus.minio.host")
   String minioHost;
@@ -33,7 +35,7 @@ public class StorageService {
 
   public void uploadObject(String objectKey, byte[] bytes) {
     try {
-      var putObjectArgs = PutObjectArgs.builder().bucket(BUCKET_NAME).object(objectKey).stream(
+      var putObjectArgs = PutObjectArgs.builder().bucket(bucketName).object(objectKey).stream(
           new ByteArrayInputStream(bytes), bytes.length, -1)
           .build();
       minioClient.putObject(putObjectArgs);
@@ -45,7 +47,7 @@ public class StorageService {
   public InputStream downloadObject(String objectKey) {
     try {
       return minioClient.getObject(
-          GetObjectArgs.builder().bucket(BUCKET_NAME).object(objectKey).build());
+          GetObjectArgs.builder().bucket(bucketName).object(objectKey).build());
     } catch (Exception e) {
       throw new StorageException("Could not download object" + objectKey, e);
     }
@@ -56,7 +58,7 @@ public class StorageService {
       String presignedUrl = minioClient.getPresignedObjectUrl(
           GetPresignedObjectUrlArgs.builder()
               .method(Method.GET)
-              .bucket(BUCKET_NAME)
+              .bucket(bucketName)
               .object(objectKey)
               .extraQueryParams(Map.of(
                   "response-content-disposition",
@@ -80,12 +82,12 @@ public class StorageService {
       String uploadUrl = minioClient.getPresignedObjectUrl(
           GetPresignedObjectUrlArgs.builder()
               .method(Method.PUT)
-              .bucket(BUCKET_NAME)
+              .bucket(bucketName)
               .object(objectKey)
               .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
               .build());
 
-      String downloadUrl = "http://" + minioHost + ":" + minioPort + "/" + BUCKET_NAME + "/" + objectKey;
+      String downloadUrl = StorageUtil.getUrlPrefix() + objectKey;
 
       return new PresignedUrl(uploadUrl, downloadUrl, objectKey);
 
@@ -119,4 +121,5 @@ public class StorageService {
       super(message, cause);
     }
   }
+
 }

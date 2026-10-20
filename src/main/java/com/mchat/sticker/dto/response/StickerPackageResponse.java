@@ -7,7 +7,8 @@ public record StickerPackageResponse(
         Long id,
         String name,
         String description,
-        StickerPackageVisibility visibility) {
+        StickerPackageVisibility visibility
+    ) {
     public static StickerPackageResponse fromEntity(StickerPackage stickerPackage) {
         return new StickerPackageResponse(
                 stickerPackage.id,

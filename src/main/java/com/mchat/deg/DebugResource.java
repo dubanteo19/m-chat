@@ -3,8 +3,9 @@ package com.mchat.deg;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -15,7 +16,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.sse.SseEventSink;
 
 @Path("/debug")
-@Consumes(MediaType.APPLICATION_JSON)
+@RequestScoped
 public class DebugResource {
 
     @Inject
@@ -33,6 +34,7 @@ public class DebugResource {
             message = objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(json);
         } catch (Exception e) {
+            Log.warn("Failed to parse debug log message as JSON, using raw string", e);
             message = body;
         }
 

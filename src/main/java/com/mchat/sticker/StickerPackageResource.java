@@ -26,6 +26,10 @@ public class StickerPackageResource {
         Long currentUserId;
         @Inject
         StickerPackageService stickerPackageService;
+
+        @Inject
+        StickerService stickerService;
+
         @Inject
         @Channel("sticker-jobs-out")
         MutinyEmitter<StickerProcessingJob> jobEmitter;
@@ -57,6 +61,14 @@ public class StickerPackageResource {
                                                 .status(Response.Status.CREATED)
                                                 .entity(stickerId)
                                                 .build());
+        }
+
+        @GET
+        @Path("/{packageId}/stickers")
+        public Uni<Response> getStickers(
+                        @PathParam("packageId") Long packageId) {
+                return stickerService.getStickersByPackageId(currentUserId, packageId)
+                                .map(stickers -> Response.ok().entity(stickers).build());
         }
 
 }

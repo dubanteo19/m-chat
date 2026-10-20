@@ -16,15 +16,15 @@ public class StickerFinalizeWorker {
     @Inject
     StickerService stickerService;
 
-    @Incoming("finalize-requests")
-    @Acknowledgment(Acknowledgment.Strategy.POST_PROCESSING)
-    public Uni<Void> finalizeSticker(StickerProcessedJob job) {
-        Log.infof("Finalizing sticker in DB: %s", job.stickerId());
+    // @Incoming("finalize-requests")
+    // @Acknowledgment(Acknowledgment.Strategy.POST_PROCESSING)
+    // public Uni<Void> finalizeSticker(StickerProcessedJob job) {
+    //     Log.infof("Finalizing sticker in DB: %s", job.stickerId());
 
-        return stickerService.markAsReady(
-                job.stickerId(),
-                job.outputKey(),
-                job.width(),
-                job.height());
-    }
+    //     return stickerService.markAsReady(
+    //             job.stickerId(),
+    //             job.outputKey(),
+    //             job.width(),
+    //             job.height());
+    // }
 }

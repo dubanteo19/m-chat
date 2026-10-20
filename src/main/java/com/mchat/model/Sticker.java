@@ -1,8 +1,10 @@
 package com.mchat.model;
 
 import java.time.Instant;
+import java.util.List;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -35,4 +37,8 @@ public class Sticker extends PanacheEntity {
 
     @Column(name = "updated_at", nullable = false)
     public Instant updatedAt;
+
+    public static Uni<List<Sticker>> findByPackageId(Long packageId) {
+        return find("packageId = ?1", packageId).list();
+    }
 }
