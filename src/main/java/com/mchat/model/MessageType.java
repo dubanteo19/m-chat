@@ -6,5 +6,6 @@ public enum MessageType {
     REACTION,
     VIDEO,
     SYSTEM,
-    STICKER
+    STICKER,
+    FILE
 }

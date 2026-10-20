@@ -6,10 +6,12 @@ import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.http.Method;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -20,7 +22,8 @@ public class StorageService {
   private static final String BUCKET_NAME = "mchat-public";
   private static final int UPLOAD_URL_EXPIRY_MINUTES = 5;
 
-  @Inject MinioClient minioClient;
+  @Inject
+  MinioClient minioClient;
 
   @ConfigProperty(name = "quarkus.minio.host")
   String minioHost;
@@ -30,10 +33,9 @@ public class StorageService {
 
   public void uploadObject(String objectKey, byte[] bytes) {
     try {
-      var putObjectArgs =
-          PutObjectArgs.builder().bucket(BUCKET_NAME).object(objectKey).stream(
-                  new ByteArrayInputStream(bytes), bytes.length, -1)
-              .build();
+      var putObjectArgs = PutObjectArgs.builder().bucket(BUCKET_NAME).object(objectKey).stream(
+          new ByteArrayInputStream(bytes), bytes.length, -1)
+          .build();
       minioClient.putObject(putObjectArgs);
     } catch (Exception e) {
       throw new StorageException("Could not upload object" + objectKey, e);
@@ -49,6 +51,25 @@ public class StorageService {
     }
   }
 
+  public String getDownloadUrl(String objectKey, String fileName) {
+    try {
+      String presignedUrl = minioClient.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.GET)
+              .bucket(BUCKET_NAME)
+              .object(objectKey)
+              .extraQueryParams(Map.of(
+                  "response-content-disposition",
+                  "attachment; filename=\"" + fileName + "\""))
+              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+              .build());
+      return presignedUrl;
+    } catch (Exception e) {
+      throw new StorageException("Could not generate download URL for object" + objectKey, e);
+    }
+
+  }
+
   public PresignedUrl createPresignedUploadUrl(Long userId, String filename, String type) {
 
     String prefix = resolvePrefix(userId, type);
@@ -56,21 +77,20 @@ public class StorageService {
     String objectKey = prefix + UUID.randomUUID() + extension;
 
     try {
-      String uploadUrl =
-          minioClient.getPresignedObjectUrl(
-              GetPresignedObjectUrlArgs.builder()
-                  .method(Method.PUT)
-                  .bucket(BUCKET_NAME)
-                  .object(objectKey)
-                  .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
-                  .build());
+      String uploadUrl = minioClient.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.PUT)
+              .bucket(BUCKET_NAME)
+              .object(objectKey)
+              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+              .build());
 
-      String downloadUrl =
-          "http://" + minioHost + ":" + minioPort + "/" + BUCKET_NAME + "/" + objectKey;
+      String downloadUrl = "http://" + minioHost + ":" + minioPort + "/" + BUCKET_NAME + "/" + objectKey;
 
       return new PresignedUrl(uploadUrl, downloadUrl, objectKey);
 
     } catch (Exception e) {
+      Log.error("Failed to generate presigned upload URL", e);
       throw new StorageException("Could not generate presigned URL", e.getCause());
     }
   }
@@ -84,6 +104,7 @@ public class StorageService {
       case "AVATAR" -> "avatars/" + userId + "/";
       case "IMAGE" -> "images/";
       case "STICKER" -> "draft/stickers/user-" + userId + "/";
+      case "FILE" -> "files/user-" + userId + "/";
       default -> "images/";
     };
   }

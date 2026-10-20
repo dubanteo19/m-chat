@@ -36,4 +36,20 @@ public class StorageResource {
     var result = storageService.createPresignedUploadUrl(currentUserId, filename, type);
     return Response.ok(result).build();
   }
+
+  @GET
+  @Path("/download")
+  public Response getDownloadUrl(
+      @QueryParam("objectKey") String objectKey, @QueryParam ("fileName") String fileName) {
+
+    if (objectKey == null || fileName.isBlank()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "Query parameter 'objectKey' and 'fileName' is required"))
+          .build();
+    }
+    Log.infof("Request donwload URL for object: %s", objectKey);
+    var result = storageService.getDownloadUrl(objectKey, fileName);
+    return Response.ok(result).build();
+  }
+
 }

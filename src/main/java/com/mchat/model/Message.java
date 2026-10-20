@@ -50,7 +50,6 @@ public class Message extends PanacheEntity {
   public Room room;
 
   public Instant sentAt;
-  public boolean isRead = false;
   public boolean isDeleted = false;
 
   @ManyToOne(fetch = FetchType.EAGER)

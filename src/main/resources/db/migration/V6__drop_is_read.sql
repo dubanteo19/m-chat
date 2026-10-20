@@ -1,0 +1,2 @@
+ALTER TABLE message 
+DROP COLUMN IF EXISTS isread
