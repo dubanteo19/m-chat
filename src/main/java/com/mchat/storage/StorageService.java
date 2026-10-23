@@ -72,6 +72,26 @@ public class StorageService {
 
   }
 
+  public PresignedUrl createPresignedUploadUrl(String objectKey) {
+    try {
+      String uploadUrl = minioClient.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.PUT)
+              .bucket(bucketName)
+              .object(objectKey)
+              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+              .build());
+
+      String downloadUrl = StorageUtil.getUrlPrefix() + objectKey;
+
+      return new PresignedUrl(uploadUrl, downloadUrl, objectKey);
+
+    } catch (Exception e) {
+      Log.error("Failed to generate presigned upload URL", e);
+      throw new StorageException("Could not generate presigned URL", e.getCause());
+    }
+  }
+
   public PresignedUrl createPresignedUploadUrl(Long userId, String filename, String type) {
 
     String prefix = resolvePrefix(userId, type);

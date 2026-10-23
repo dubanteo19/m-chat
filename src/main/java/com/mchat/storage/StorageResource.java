@@ -38,9 +38,23 @@ public class StorageResource {
   }
 
   @GET
+  @Path("/presigned-url-by-object-key")
+  public Response getPresignedUrlByObjectKey(
+      @QueryParam("objectKey") String objectKey) {
+
+    if (objectKey == null) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "Query parameter 'objectKey' is required"))
+          .build();
+    }
+    var result = storageService.createPresignedUploadUrl(objectKey);
+    return Response.ok(result).build();
+  }
+
+  @GET
   @Path("/download")
   public Response getDownloadUrl(
-      @QueryParam("objectKey") String objectKey, @QueryParam ("fileName") String fileName) {
+      @QueryParam("objectKey") String objectKey, @QueryParam("fileName") String fileName) {
 
     if (objectKey == null || fileName.isBlank()) {
       return Response.status(Response.Status.BAD_REQUEST)

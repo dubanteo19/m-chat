@@ -5,13 +5,11 @@ import com.mchat.storage.StorageUtil;
 
 public record StickerReponse(
                 long id,
-                String url,
-                long fileSize) {
+                String url) {
         public static StickerReponse fromEntity(Sticker sticker) {
                 String downloadUrl = StorageUtil.getUrlPrefix() + sticker.imageKey;
                 return new StickerReponse(
                                 sticker.id,
-                                downloadUrl,
-                                sticker.fileSize);
+                                downloadUrl);
         }
 }

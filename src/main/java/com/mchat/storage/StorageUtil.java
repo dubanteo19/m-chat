@@ -2,8 +2,10 @@ package com.mchat.storage;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import jakarta.annotation.PostConstruct;
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 
 @ApplicationScoped
 public class StorageUtil {
@@ -18,10 +20,10 @@ public class StorageUtil {
     @ConfigProperty(name = "quarkus.minio.port")
     int minioPort;
 
-    @PostConstruct
-    void init() {
+    void init(@Observes StartupEvent ev) {
         urlPrefix = "http://" + minioHost + ":" + minioPort
                 + "/" + bucketName + "/";
+        Log.infof("Storage URL prefix initialized: %s", urlPrefix);
     }
 
     public static String getUrlPrefix() {

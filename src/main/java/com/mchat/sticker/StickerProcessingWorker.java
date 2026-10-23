@@ -1,6 +1,5 @@
 package com.mchat.sticker;
 
-import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 
@@ -10,7 +9,6 @@ import com.mchat.storage.StorageService;
 
 import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -40,7 +38,8 @@ public class StickerProcessingWorker {
 
     private ProcessedSticker processStickerImage(StickerProcessingJob job) {
         try (var input = storageService.downloadObject(job.objectKey())) {
-            Log.infof("Processing sticker %s for package %s object: %s", job.stickerId(), job.packageId(), job.objectKey());
+            Log.infof("Processing sticker %s for package %s object: %s", job.stickerId(), job.packageId(),
+                    job.objectKey());
             var image = imageProcessor.process(input);
             String outputKey = "stickers/" + job.packageId() + "/" + job.stickerId() + ".webp";
             Log.infof("Uploading processed sticker %s to %s", job.stickerId(), outputKey);
