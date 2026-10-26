@@ -3,12 +3,12 @@ package com.mchat.sticker.dto.response;
 import com.mchat.model.Sticker;
 import com.mchat.storage.StorageUtil;
 
-public record StickerReponse(
+public record StickerResponse(
                 long id,
                 String url) {
-        public static StickerReponse fromEntity(Sticker sticker) {
+        public static StickerResponse fromEntity(Sticker sticker) {
                 String downloadUrl = StorageUtil.getUrlPrefix() + sticker.imageKey;
-                return new StickerReponse(
+                return new StickerResponse(
                                 sticker.id,
                                 downloadUrl);
         }

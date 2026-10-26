@@ -2,7 +2,7 @@ package com.mchat.sticker;
 
 import java.util.List;
 
-import com.mchat.sticker.dto.response.StickerReponse;
+import com.mchat.sticker.dto.response.StickerResponse;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,8 +21,8 @@ public class StickerService {
     return stickerDbService.markReady(stickerId, objectKey, width, height);
   }
 
-  public Uni<List<StickerReponse>> getStickersByPackageId(Long userId, Long packageId) {
+  public Uni<List<StickerResponse>> getStickersByPackageId(Long userId, Long packageId) {
     return stickerDbService.getByPackageId(packageId)
-        .map(stickers -> stickers.stream().map(StickerReponse::fromEntity).toList());
+        .map(stickers -> stickers.stream().map(StickerResponse::fromEntity).toList());
   }
 }

@@ -9,7 +9,7 @@ import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.RoomRole;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.command.CreateRoomCommand;
-import com.mchat.room.command.ReadRoomCommand;
+import com.mchat.room.dto.request.ReadRoomRequest;
 import com.mchat.room.dto.response.RoomInfo;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
 import com.mchat.user.UserService;
@@ -81,7 +81,7 @@ public class RoomService {
             .toList());
   }
 
-  public Uni<Void> read(ReadRoomCommand command) {
-    return roomDbService.read(command.userId(), command.roomId(), command.seq());
+  public Uni<Void> read(Long userId, String roomId, ReadRoomRequest request) {
+    return roomDbService.read(userId, roomId, request.seq());
   }
 }

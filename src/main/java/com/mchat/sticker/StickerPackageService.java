@@ -24,6 +24,10 @@ public class StickerPackageService {
                 .map(list -> list.stream().map(StickerPackageResponse::fromEntity).toList());
     }
 
+    public Uni<List<StickerPackageResponse>> getPublicPackages() {
+        return stickerPackageDbService.getPublicPackages();
+    }
+
     public Uni<Long> addSticker(Long userId, Long packageId, CreateStickerRequest request) {
         return stickerPackageDbService.addSticker(userId, packageId, request);
     }

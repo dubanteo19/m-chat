@@ -47,6 +47,12 @@ public class StickerPackageResource {
                                 .map(packages -> Response.ok().entity(packages).build());
         }
 
+        @GET
+        public Uni<Response> getPublicPackages() {
+                return stickerPackageService.getPublicPackages()
+                                .map(packages -> Response.ok().entity(packages).build());
+        }
+
         @POST
         @Path("/{packageId}/stickers")
         public Uni<Response> addSticker(

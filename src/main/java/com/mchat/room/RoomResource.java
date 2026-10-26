@@ -38,8 +38,7 @@ public class RoomResource {
   @Path("/{roomId}/read")
   public Uni<Response> read(
       @PathParam("roomId") String roomId, ReadRoomRequest request) {
-    var command = request.toCommand(currentUserId, roomId);
-    return roomService.read(command).map(payload -> Response.noContent().build());
+    return roomService.read(currentUserId, roomId, request).map(payload -> Response.noContent().build());
   }
 
   @POST
