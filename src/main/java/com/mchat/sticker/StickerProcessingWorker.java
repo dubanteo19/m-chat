@@ -9,6 +9,7 @@ import com.mchat.storage.StorageService;
 
 import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,6 +32,7 @@ public class StickerProcessingWorker {
     public Uni<Void> processSticker(StickerProcessingJob job) {
         Log.infof("Processing image for sticker: %s", job.stickerId());
         return Uni.createFrom().item(() -> processStickerImage(job))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 .chain(processedSticker -> jobEmitter.send(new StickerProcessedJob(job.stickerId(),
                         processedSticker.outputKey(), processedSticker.width(), processedSticker.height())))
                 .replaceWithVoid();

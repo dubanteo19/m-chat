@@ -11,6 +11,7 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -67,6 +68,15 @@ public class StickerPackageResource {
                                                 .status(Response.Status.CREATED)
                                                 .entity(stickerId)
                                                 .build());
+        }
+
+        @DELETE
+        @Path("/{packageId}/stickers/{stickerId}")
+        public Uni<Response> removeSticker(
+                        @PathParam("packageId") Long packageId, @PathParam("stickerId") Long stickerId) {
+                return stickerPackageService
+                                .removeSticker(currentUserId, packageId, stickerId)
+                                .map(removedStickerId -> Response.status(Response.Status.NO_CONTENT).build());
         }
 
         @GET

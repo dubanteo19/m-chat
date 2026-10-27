@@ -29,6 +29,9 @@ public class Sticker extends PanacheEntity {
 
     public Integer height;
 
+    @Column(nullable = false)
+    public boolean deleted = false;
+
     @Column(name = "file_size")
     public Long fileSize;
 

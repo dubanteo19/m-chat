@@ -20,8 +20,7 @@ public class StickerPackageService {
     }
 
     public Uni<List<StickerPackageResponse>> getPackages(Long userId) {
-        return stickerPackageDbService.getByUserId(userId)
-                .map(list -> list.stream().map(StickerPackageResponse::fromEntity).toList());
+        return stickerPackageDbService.getByUserId(userId);
     }
 
     public Uni<List<StickerPackageResponse>> getPublicPackages() {
@@ -30,5 +29,9 @@ public class StickerPackageService {
 
     public Uni<Long> addSticker(Long userId, Long packageId, CreateStickerRequest request) {
         return stickerPackageDbService.addSticker(userId, packageId, request);
+    }
+
+    public Uni<Long> removeSticker(Long userId, Long packageId, Long stickerId) {
+        return stickerPackageDbService.removeSticker(userId, packageId, stickerId);
     }
 }
