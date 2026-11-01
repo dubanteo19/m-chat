@@ -1,12 +1,8 @@
 package com.mchat.sticker;
 
-import org.eclipse.microprofile.jwt.Claim;
-import org.eclipse.microprofile.reactive.messaging.Channel;
-
 import com.mchat.event.StickerProcessingJob;
 import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
 import com.mchat.sticker.dto.request.CreateStickerRequest;
-
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.RequestScoped;
@@ -17,74 +13,75 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.Claim;
+import org.eclipse.microprofile.reactive.messaging.Channel;
 
 @Path("/sticker-packages")
 @RequestScoped
 public class StickerPackageResource {
 
-        @Inject
-        @Claim("userId")
-        Long currentUserId;
-        @Inject
-        StickerPackageService stickerPackageService;
+  @Inject
+  @Claim("userId")
+  Long currentUserId;
 
-        @Inject
-        StickerService stickerService;
+  @Inject StickerPackageService stickerPackageService;
 
-        @Inject
-        @Channel("sticker-jobs-out")
-        MutinyEmitter<StickerProcessingJob> jobEmitter;
+  @Inject StickerService stickerService;
 
-        @POST
-        public Uni<Response> createPackage(CreateStickerPackageRequest request) {
-                return stickerPackageService.create(currentUserId, request)
-                                .map(packageId -> Response.status(Response.Status.CREATED).entity(packageId).build());
-        }
+  @Inject
+  @Channel("sticker-jobs-out")
+  MutinyEmitter<StickerProcessingJob> jobEmitter;
 
-        @GET
-        @Path("/my")
-        public Uni<Response> getMyPackages() {
-                return stickerPackageService.getPackages(currentUserId)
-                                .map(packages -> Response.ok().entity(packages).build());
-        }
+  @POST
+  public Uni<Response> createPackage(CreateStickerPackageRequest request) {
+    return stickerPackageService
+        .create(currentUserId, request)
+        .map(packageId -> Response.status(Response.Status.CREATED).entity(packageId).build());
+  }
 
-        @GET
-        public Uni<Response> getPublicPackages() {
-                return stickerPackageService.getPublicPackages()
-                                .map(packages -> Response.ok().entity(packages).build());
-        }
+  @GET
+  @Path("/my")
+  public Uni<Response> getMyPackages() {
+    return stickerPackageService
+        .getPackages(currentUserId)
+        .map(packages -> Response.ok().entity(packages).build());
+  }
 
-        @POST
-        @Path("/{packageId}/stickers")
-        public Uni<Response> addSticker(
-                        @PathParam("packageId") Long packageId, CreateStickerRequest request) {
-                return stickerPackageService
-                                .addSticker(currentUserId, packageId, request)
-                                .chain(stickerId -> {
-                                        var job = new StickerProcessingJob(stickerId, packageId, request.objectKey());
-                                        return jobEmitter.send(job).replaceWith(stickerId);
-                                })
-                                .map(stickerId -> Response
-                                                .status(Response.Status.CREATED)
-                                                .entity(stickerId)
-                                                .build());
-        }
+  @GET
+  public Uni<Response> getPublicPackages() {
+    return stickerPackageService
+        .getPublicPackages()
+        .map(packages -> Response.ok().entity(packages).build());
+  }
 
-        @DELETE
-        @Path("/{packageId}/stickers/{stickerId}")
-        public Uni<Response> removeSticker(
-                        @PathParam("packageId") Long packageId, @PathParam("stickerId") Long stickerId) {
-                return stickerPackageService
-                                .removeSticker(currentUserId, packageId, stickerId)
-                                .map(removedStickerId -> Response.status(Response.Status.NO_CONTENT).build());
-        }
+  @POST
+  @Path("/{packageId}/stickers")
+  public Uni<Response> addSticker(
+      @PathParam("packageId") Long packageId, CreateStickerRequest request) {
+    return stickerPackageService
+        .addSticker(currentUserId, packageId, request)
+        .chain(
+            stickerId -> {
+              var job = new StickerProcessingJob(stickerId, packageId, request.objectKey());
+              return jobEmitter.send(job).replaceWith(stickerId);
+            })
+        .map(stickerId -> Response.status(Response.Status.CREATED).entity(stickerId).build());
+  }
 
-        @GET
-        @Path("/{packageId}/stickers")
-        public Uni<Response> getStickers(
-                        @PathParam("packageId") Long packageId) {
-                return stickerService.getStickersByPackageId(currentUserId, packageId)
-                                .map(stickers -> Response.ok().entity(stickers).build());
-        }
+  @DELETE
+  @Path("/{packageId}/stickers/{stickerId}")
+  public Uni<Response> removeSticker(
+      @PathParam("packageId") Long packageId, @PathParam("stickerId") Long stickerId) {
+    return stickerPackageService
+        .removeSticker(currentUserId, packageId, stickerId)
+        .map(removedStickerId -> Response.status(Response.Status.NO_CONTENT).build());
+  }
 
+  @POST
+  @Path("/{packageId}/download")
+  public Uni<Response> donwloadPack(@PathParam("packageId") Long packageId) {
+    return stickerPackageService
+        .download(packageId)
+        .map(presignUrl -> Response.ok().entity(presignUrl).build());
+  }
 }
