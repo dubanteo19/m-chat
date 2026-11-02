@@ -1,6 +1,12 @@
 package com.mchat.sticker;
 
 import com.mchat.event.StickerProcessedJob;
+import com.mchat.socket.UserEventBroadcaster;
+import com.mchat.user.dto.event.StickerStatus;
+import com.mchat.user.dto.event.StickerStatusChangedEvent;
+import com.mchat.user.dto.event.UserEvent;
+import com.mchat.user.dto.event.UserEventType;
+
 import io.quarkus.logging.Log;
 import io.quarkus.vertx.core.runtime.context.VertxContextSafetyToggle;
 import io.smallrye.mutiny.Uni;
@@ -13,9 +19,13 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 @ApplicationScoped
 public class StickerFinalizeWorker {
-  @Inject Vertx vertx;
+  @Inject
+  Vertx vertx;
 
-  @Inject StickerService stickerService;
+  @Inject
+  StickerService stickerService;
+  @Inject
+  UserEventBroadcaster userEventBroadCaster;
 
   @Incoming("finalize-requests")
   public Uni<Void> finalizeSticker(StickerProcessedJob job) {
@@ -28,21 +38,22 @@ public class StickerFinalizeWorker {
     Log.infof("Finalizing sticker in DB: %s", job.stickerId());
     return Uni.createFrom()
         .emitter(
-            emiteer ->
-                duplicated.runOnContext(
-                    ignored -> {
-                      try {
-                        VertxContextSafetyToggle.setContextSafe(duplicated, true);
-                        stickerService
-                            .markAsReady(
-                                job.stickerId(), job.outputKey(), job.width(), job.height())
-                            .subscribe()
-                            .with(ignoredResult -> emiteer.complete(null), emiteer::fail);
-                      } catch (Exception e) {
-                        Log.errorf(
-                            e, "Failed to toggle context safe for sticker: %s", job.stickerId());
-                      }
-                    }));
+            emiteer -> duplicated.runOnContext(
+                ignored -> {
+                  try {
+                    VertxContextSafetyToggle.setContextSafe(duplicated, true);
+                    stickerService
+                        .markAsReady(
+                            job.stickerId(), job.outputKey(), job.width(), job.height())
+                        .invoke(() -> userEventBroadCaster.send(job.userId(),
+                            new UserEvent(UserEventType.STICKER_STATUS_CHANGED,
+                                new StickerStatusChangedEvent(job.stickerId(), StickerStatus.READY))))
+                        .subscribe()
+                        .with(ignoredResult -> emiteer.complete(null), emiteer::fail);
+                  } catch (Exception e) {
+                    Log.errorf(
+                        e, "Failed to toggle context safe for sticker: %s", job.stickerId());
+                  }
+                }));
   }
 }
-

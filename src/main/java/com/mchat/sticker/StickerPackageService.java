@@ -19,9 +19,11 @@ import java.util.zip.ZipOutputStream;
 
 @ApplicationScoped
 public class StickerPackageService {
-  @Inject StickerPackageDbService stickerPackageDbService;
+  @Inject
+  StickerPackageDbService stickerPackageDbService;
 
-  @Inject StorageService storageService;
+  @Inject
+  StorageService storageService;
 
   public Uni<StickerPackageResponse> create(Long userId, CreateStickerPackageRequest request) {
     return stickerPackageDbService.create(userId, request).map(StickerPackageResponse::fromEntity);
@@ -47,10 +49,13 @@ public class StickerPackageService {
     return stickerPackageDbService
         .getStickerKeys(packageId)
         .chain(
-            keys ->
-                Uni.createFrom()
-                    .item(() -> generateZip(packageId, keys))
-                    .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()));
+            keys -> Uni.createFrom()
+                .item(() -> generateZip(packageId, keys))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()));
+  }
+
+  public Uni<Long> deletePack(Long userId, Long packageId) {
+    return stickerPackageDbService.deletePack(userId, packageId);
   }
 
   private PresignedUrl generateZip(Long stickerPackageId, List<String> stickerKeys) {

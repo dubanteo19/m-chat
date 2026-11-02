@@ -10,6 +10,7 @@ import com.mchat.sticker.dto.response.StickerPackageResponse;
 import com.mchat.sticker.dto.response.StickerResponse;
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
@@ -35,7 +36,7 @@ public class StickerPackageDbService {
   @WithSession
   public Uni<List<StickerPackageResponse>> getByUserId(Long userId) {
     return StickerPackage.<StickerPackage>find(
-            "ownerId = ?1 and deleted = false ORDER BY createdAt DESC", userId)
+        "ownerId = ?1 and deleted = false ORDER BY createdAt DESC", userId)
         .list()
         .chain(this::attachSticker);
   }
@@ -47,30 +48,29 @@ public class StickerPackageDbService {
   }
 
   private Uni<List<StickerPackageResponse>> attachSticker(List<StickerPackage> packages) {
-    if (packages.isEmpty()) return Uni.createFrom().item(List.of());
+    if (packages.isEmpty())
+      return Uni.createFrom().item(List.of());
 
     List<Long> packageIds = packages.stream().map(p -> p.id).toList();
 
     return Sticker.<Sticker>find(
-            "packageId IN ?1 AND status = ?2 and deleted = false ORDER BY createdAt DESC",
-            packageIds,
-            StickerStatus.READY)
+        "packageId IN ?1 AND status = ?2 and deleted = false ORDER BY createdAt DESC",
+        packageIds,
+        StickerStatus.READY)
         .list()
         .map(
             stickers -> {
-              Map<Long, List<StickerResponse>> stickersByPackageId =
-                  stickers.stream()
-                      .collect(
-                          Collectors.groupingBy(
-                              s -> s.packageId,
-                              Collectors.mapping(
-                                  StickerResponse::fromEntity, Collectors.toList())));
+              Map<Long, List<StickerResponse>> stickersByPackageId = stickers.stream()
+                  .collect(
+                      Collectors.groupingBy(
+                          s -> s.packageId,
+                          Collectors.mapping(
+                              StickerResponse::fromEntity, Collectors.toList())));
 
               return packages.stream()
                   .map(
-                      p ->
-                          StickerPackageResponse.fromEntityWithStickers(
-                              p, stickersByPackageId.getOrDefault(p.id, List.of())))
+                      p -> StickerPackageResponse.fromEntityWithStickers(
+                          p, stickersByPackageId.getOrDefault(p.id, List.of())))
                   .toList();
             });
   }
@@ -78,8 +78,8 @@ public class StickerPackageDbService {
   @WithSession
   public Uni<List<StickerPackageResponse>> getPublicPackages() {
     return StickerPackage.<StickerPackage>find(
-            "visibility = ?1 and deleted = false ORDER BY createdAt DESC",
-            StickerPackageVisibility.PUBLIC)
+        "visibility = ?1 and deleted = false ORDER BY createdAt DESC",
+        StickerPackageVisibility.PUBLIC)
         .list()
         .chain(this::attachSticker);
   }
@@ -102,21 +102,33 @@ public class StickerPackageDbService {
   }
 
   @WithTransaction
+  public Uni<Long> deletePack(Long userId, Long packageId) {
+    return findByIdAndOwnerId(packageId, userId)
+        .flatMap(
+            stickerPackage -> {
+              Log.infof("Deleting sticker package %d", packageId);
+              stickerPackage.deleted = true;
+              return stickerPackage.persist().replaceWith(stickerPackage.id);
+            });
+
+  }
+
+  @WithTransaction
   public Uni<Long> removeSticker(Long userId, Long packageId, Long stickerId) {
     return findByIdAndOwnerId(packageId, userId)
         .flatMap(
-            stickerPackage ->
-                Sticker.<Sticker>find(
-                        "id = ?1 and packageId = ?2 and deleted = false", stickerId, packageId)
-                    .firstResult()
-                    .onItem()
-                    .ifNull()
-                    .failWith(() -> new RuntimeException("Sticker not found"))
-                    .flatMap(
-                        sticker -> {
-                          sticker.deleted = true;
-                          return sticker.persist().replaceWith(sticker.id);
-                        }));
+            stickerPackage -> Sticker.<Sticker>find(
+                "id = ?1 and packageId = ?2 and deleted = false", stickerId, packageId)
+                .firstResult()
+                .onItem()
+                .ifNull()
+                .failWith(() -> new RuntimeException("Sticker not found"))
+                .flatMap(
+                    sticker -> {
+                      Log.infof("Removing sticker %d from package %d", stickerId, packageId);
+                      sticker.deleted = true;
+                      return sticker.persist().replaceWith(sticker.id);
+                    }));
   }
 
   @WithSession
@@ -124,7 +136,8 @@ public class StickerPackageDbService {
     return Sticker.findByPackageId(packageId)
         .map(
             stickers -> {
-              if (stickers.isEmpty()) throw new RuntimeException("No stickers found");
+              if (stickers.isEmpty())
+                throw new RuntimeException("No stickers found");
               return stickers.stream().map(sticker -> sticker.imageKey).toList();
             });
   }

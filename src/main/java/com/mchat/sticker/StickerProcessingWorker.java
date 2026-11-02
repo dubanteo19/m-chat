@@ -1,42 +1,65 @@
 package com.mchat.sticker;
 
+import org.eclipse.microprofile.reactive.messaging.Channel;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
 import com.mchat.event.StickerProcessedJob;
 import com.mchat.event.StickerProcessingJob;
+import com.mchat.socket.UserEventBroadcaster;
 import com.mchat.storage.StorageService;
+import com.mchat.user.dto.event.StickerStatus;
+import com.mchat.user.dto.event.StickerStatusChangedEvent;
+import com.mchat.user.dto.event.UserEvent;
+import com.mchat.user.dto.event.UserEventType;
+
 import io.quarkus.logging.Log;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.reactive.messaging.MutinyEmitter;
+import io.smallrye.reactive.messaging.annotations.Blocking;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.reactive.messaging.Channel;
-import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 @ApplicationScoped
 public class StickerProcessingWorker {
 
-  @Inject StorageService storageService;
-  @Inject ImageProcessor imageProcessor;
-  @Inject StickerService stickerService;
+  @Inject
+  StorageService storageService;
+  @Inject
+  ImageProcessor imageProcessor;
+  @Inject
+  StickerService stickerService;
+
+  @Inject
+  UserEventBroadcaster userEventBroadCaster;
 
   @Inject
   @Channel("sticker-processed-out")
   MutinyEmitter<StickerProcessedJob> jobEmitter;
 
   @Incoming("sticker-job-requests")
+  @Blocking(value = "sticker-processing", ordered = false)
   public Uni<Void> processSticker(StickerProcessingJob job) {
-    Log.infof("Processing image for sticker: %s", job.stickerId());
+    Log.infof("Received sticker processing request for sticker: %s", job.stickerId());
+
+    userEventBroadCaster.send(
+        job.userId(),
+        new UserEvent(
+            UserEventType.STICKER_STATUS_CHANGED,
+            new StickerStatusChangedEvent(
+                job.stickerId(), StickerStatus.PROCESSING)));
+
     return Uni.createFrom()
         .item(() -> processStickerImage(job))
         .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
         .chain(
-            processedSticker ->
-                jobEmitter.send(
-                    new StickerProcessedJob(
-                        job.stickerId(),
-                        processedSticker.outputKey(),
-                        processedSticker.width(),
-                        processedSticker.height())))
+            processedSticker -> jobEmitter.send(
+                new StickerProcessedJob(
+                    job.stickerId(),
+                    processedSticker.outputKey(),
+                    processedSticker.width(),
+                    processedSticker.height(),
+                    job.userId())))
         .replaceWithVoid();
   }
 
@@ -56,6 +79,6 @@ public class StickerProcessingWorker {
     }
   }
 
-  private record ProcessedSticker(String outputKey, int width, int height) {}
+  private record ProcessedSticker(String outputKey, int width, int height) {
+  }
 }
-

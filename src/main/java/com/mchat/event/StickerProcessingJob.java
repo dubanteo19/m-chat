@@ -1,7 +1,8 @@
 package com.mchat.event;
 
 public record StickerProcessingJob(
-                Long stickerId,
-                Long packageId,
-                String objectKey) {
+        Long stickerId,
+        Long packageId,
+        String objectKey,
+        Long userId) {
 }

@@ -1,8 +1,14 @@
 package com.mchat.sticker;
 
 import com.mchat.event.StickerProcessingJob;
+import com.mchat.socket.UserEventBroadcaster;
 import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
 import com.mchat.sticker.dto.request.CreateStickerRequest;
+import com.mchat.user.dto.event.StickerStatus;
+import com.mchat.user.dto.event.StickerStatusChangedEvent;
+import com.mchat.user.dto.event.UserEvent;
+import com.mchat.user.dto.event.UserEventType;
+
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.enterprise.context.RequestScoped;
@@ -24,9 +30,14 @@ public class StickerPackageResource {
   @Claim("userId")
   Long currentUserId;
 
-  @Inject StickerPackageService stickerPackageService;
+  @Inject
+  StickerPackageService stickerPackageService;
 
-  @Inject StickerService stickerService;
+  @Inject
+  StickerService stickerService;
+
+  @Inject
+  UserEventBroadcaster userEventBroadCaster;
 
   @Inject
   @Channel("sticker-jobs-out")
@@ -62,10 +73,27 @@ public class StickerPackageResource {
         .addSticker(currentUserId, packageId, request)
         .chain(
             stickerId -> {
-              var job = new StickerProcessingJob(stickerId, packageId, request.objectKey());
-              return jobEmitter.send(job).replaceWith(stickerId);
+              var job = new StickerProcessingJob(stickerId, packageId, request.objectKey(), currentUserId);
+              return jobEmitter.send(job)
+                  .invoke(() -> userEventBroadCaster.send(
+                      currentUserId,
+                      new UserEvent(
+                          UserEventType.STICKER_STATUS_CHANGED,
+                          new StickerStatusChangedEvent(
+                              stickerId,
+                              StickerStatus.QUEUED))))
+                  .replaceWith(stickerId);
             })
         .map(stickerId -> Response.status(Response.Status.CREATED).entity(stickerId).build());
+  }
+
+  @DELETE
+  @Path("/{packageId}")
+  public Uni<Response> deletePack(
+      @PathParam("packageId") Long packageId) {
+    return stickerPackageService
+        .deletePack(currentUserId, packageId)
+        .map(removedPackageId -> Response.status(Response.Status.NO_CONTENT).build());
   }
 
   @DELETE

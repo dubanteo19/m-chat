@@ -27,10 +27,10 @@ public class UserEventBroadcaster {
 
     public void remove(Long userId, SseEventSink sink) {
         var sinks = connections.get(userId);
-
         if (sinks != null) {
             sinks.remove(sink);
-
+            Log.infof("Removing connection for userId: %s, total connections: %s", userId,
+                    connections.get(userId).size());
             if (sinks.isEmpty()) {
                 connections.remove(userId);
             }
@@ -44,18 +44,39 @@ public class UserEventBroadcaster {
             return;
 
         var event = sse.newEventBuilder()
-                .name(userEvent.type())
+                .name(userEvent.type().toString())
                 .mediaType(MediaType.APPLICATION_JSON_TYPE)
                 .data(userEvent.data())
                 .build();
 
         for (var sink : sinks) {
-            sink.send(event)
-                    .exceptionally(ex -> {
-                        sinks.remove(sink);
-                        sink.close();
-                        return null;
-                    });
+            if (sink.isClosed()) {
+                removeSink(sinks, sink, userId, null);
+                continue;
+            }
+            try {
+                sink.send(event)
+                        .exceptionally(ex -> {
+                            removeSink(sinks, sink, userId, ex);
+                            return null;
+                        });
+            } catch (IllegalStateException ex) {
+                removeSink(sinks, sink, userId, ex);
+            }
+        }
+    }
+
+    private void removeSink(
+            Set<SseEventSink> sinks,
+            SseEventSink sink,
+            Long userId,
+            Throwable ex) {
+        Log.debugf(ex, "Removing stale SSE sink for userId: %s", userId);
+        sinks.remove(sink);
+
+        try {
+            sink.close();
+        } catch (Exception ignored) {
         }
     }
 }

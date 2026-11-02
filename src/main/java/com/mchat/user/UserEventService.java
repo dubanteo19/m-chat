@@ -5,6 +5,7 @@ import com.mchat.socket.ChatSocket;
 import com.mchat.socket.UserEventBroadcaster;
 import com.mchat.user.dto.event.RoomUnreadUpdatedEvent;
 import com.mchat.user.dto.event.UserEvent;
+import com.mchat.user.dto.event.UserEventType;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,8 +13,6 @@ import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class UserEventService {
-        public static final String ROOM_UPDATED = "ROOM_UPDATED";
-        public static final String ROOM_UNREAD_UPDATED = "ROOM_UNREAD_UPDATED";
         @Inject
         UserEventBroadcaster broadcaster;
         @Inject
@@ -34,7 +33,7 @@ public class UserEventService {
                                                         .forEach(member -> {
                                                                 broadcaster.send(
                                                                                 member.user().id(),
-                                                                                UserEvent.of(ROOM_UNREAD_UPDATED,
+                                                                                UserEvent.of(UserEventType.ROOM_UNREAD_UPDATED,
                                                                                                 new RoomUnreadUpdatedEvent(
                                                                                                                 roomId,
                                                                                                                 seq)));
