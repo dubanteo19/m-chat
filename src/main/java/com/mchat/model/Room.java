@@ -80,6 +80,7 @@ public class Room extends PanacheEntityBase {
         join RoomMember rm on rm.room = r
         where rm.user.id = ?1
           and r.deleted = false
+        order by r.lastSeq desc
         """, userId)
         .project(RoomInfo.class)
         .list();

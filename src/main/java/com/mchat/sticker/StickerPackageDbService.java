@@ -4,8 +4,9 @@ import com.mchat.model.Sticker;
 import com.mchat.model.StickerPackage;
 import com.mchat.model.StickerPackageVisibility;
 import com.mchat.model.StickerStatus;
-import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
+import com.mchat.sticker.dto.request.CreateStickerPackRequest;
 import com.mchat.sticker.dto.request.CreateStickerRequest;
+import com.mchat.sticker.dto.request.UpdateStickerPackRequest;
 import com.mchat.sticker.dto.response.StickerPackageResponse;
 import com.mchat.sticker.dto.response.StickerResponse;
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
@@ -22,7 +23,30 @@ import java.util.stream.Collectors;
 public class StickerPackageDbService {
 
   @WithTransaction
-  public Uni<StickerPackage> create(Long userId, CreateStickerPackageRequest request) {
+  public Uni<StickerPackage> update(Long userId, UpdateStickerPackRequest request) {
+    return findByIdAndOwnerId(request.id(), userId)
+        .onItem()
+        .ifNull()
+        .failWith(
+            () -> new RuntimeException("Sticker package not found or does not belong to user"))
+        .flatMap(
+            stickerPackage -> {
+              if (request.name() != null) {
+                stickerPackage.name = request.name();
+              }
+              if (request.description() != null) {
+                stickerPackage.description = request.description();
+              }
+              if (request.visibility() != null) {
+                stickerPackage.visibility = request.visibility();
+              }
+              stickerPackage.updatedAt = Instant.now();
+              return stickerPackage.persist();
+            });
+  }
+
+  @WithTransaction
+  public Uni<StickerPackage> create(Long userId, CreateStickerPackRequest request) {
     var strickerPackage = new StickerPackage();
     strickerPackage.ownerId = userId;
     strickerPackage.name = request.name();

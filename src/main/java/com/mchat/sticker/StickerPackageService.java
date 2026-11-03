@@ -1,7 +1,8 @@
 package com.mchat.sticker;
 
-import com.mchat.sticker.dto.request.CreateStickerPackageRequest;
+import com.mchat.sticker.dto.request.CreateStickerPackRequest;
 import com.mchat.sticker.dto.request.CreateStickerRequest;
+import com.mchat.sticker.dto.request.UpdateStickerPackRequest;
 import com.mchat.sticker.dto.response.StickerPackageResponse;
 import com.mchat.storage.StorageService;
 import com.mchat.storage.dto.PresignedUrl;
@@ -25,8 +26,12 @@ public class StickerPackageService {
   @Inject
   StorageService storageService;
 
-  public Uni<StickerPackageResponse> create(Long userId, CreateStickerPackageRequest request) {
+  public Uni<StickerPackageResponse> create(Long userId, CreateStickerPackRequest request) {
     return stickerPackageDbService.create(userId, request).map(StickerPackageResponse::fromEntity);
+  }
+
+  public Uni<StickerPackageResponse> update(Long userId, UpdateStickerPackRequest request) {
+    return stickerPackageDbService.update(userId, request).map(StickerPackageResponse::fromEntity);
   }
 
   public Uni<List<StickerPackageResponse>> getPackages(Long userId) {
