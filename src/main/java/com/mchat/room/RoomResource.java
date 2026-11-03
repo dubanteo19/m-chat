@@ -2,6 +2,7 @@ package com.mchat.room;
 
 import org.eclipse.microprofile.jwt.Claim;
 
+import com.mchat.room.dto.request.CreateDmRequest;
 import com.mchat.room.dto.request.CreateRoomRequest;
 import com.mchat.room.dto.request.ReadRoomRequest;
 
@@ -42,9 +43,15 @@ public class RoomResource {
   }
 
   @POST
-  public Uni<Response> create(CreateRoomRequest request) {
+  public Uni<Response> createGroup(CreateRoomRequest request) {
     var command = request.toCommand(currentUserId);
     return roomService.create(command).map(payload -> Response.ok(payload).build());
+  }
+
+  @POST
+  @Path("/dm")
+  public Uni<Response> createDm(CreateDmRequest request) {
+    return roomService.createDm(currentUserId, request).map(payload -> Response.ok(payload).build());
   }
 
   @DELETE

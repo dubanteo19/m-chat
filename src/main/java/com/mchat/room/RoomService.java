@@ -9,6 +9,7 @@ import com.mchat.common.cache.CacheConstants;
 import com.mchat.model.RoomRole;
 import com.mchat.notification.dto.response.PushRecipientInfo;
 import com.mchat.room.command.CreateRoomCommand;
+import com.mchat.room.dto.request.CreateDmRequest;
 import com.mchat.room.dto.request.ReadRoomRequest;
 import com.mchat.room.dto.response.RoomInfo;
 import com.mchat.roommember.dto.response.RoomMemberInfo;
@@ -41,6 +42,11 @@ public class RoomService {
   @CacheResult(cacheName = CacheConstants.ROOM_INFO)
   public Uni<RoomInfo> fetchRoomInfoCached(String roomId) {
     return roomDbService.findRequiredById(roomId)
+        .map(RoomInfo::fromEntity);
+  }
+
+  public Uni<RoomInfo> createDm(Long userId, CreateDmRequest request) {
+    return roomDbService.createDm(userId, request.peerId())
         .map(RoomInfo::fromEntity);
   }
 

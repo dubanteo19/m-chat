@@ -3,6 +3,9 @@ package com.mchat.room;
 import com.mchat.model.Message;
 import com.mchat.model.Room;
 import com.mchat.model.RoomMember;
+import com.mchat.model.RoomRole;
+import com.mchat.model.RoomType;
+import com.mchat.model.User;
 import com.mchat.room.command.CreateRoomCommand;
 import com.mchat.room.dto.response.RoomInfo;
 
@@ -57,6 +60,20 @@ public class RoomDbService {
   public Uni<RoomMember> findMember(String roomId, Long userId) {
     return RoomMember.<RoomMember>find("room.id = ?1 and user.id = ?2", roomId, userId)
         .firstResult();
+  }
+
+  @WithTransaction
+  public Uni<Room> createDm(Long userId, Long peerId) {
+    String roomName = "dm_" + userId + "_" + peerId;
+    var room = Room.create(roomName, null);
+    room.type = RoomType.DM;
+    return room.<Room>persist()
+        .chain(
+            savedRoom -> {
+              var master = new RoomMember(savedRoom, new User(userId), RoomRole.MASTER);
+              var peer = new RoomMember(savedRoom, new User(peerId), RoomRole.MEMBER);
+              return RoomMember.persist(master, peer).replaceWith(savedRoom);
+            });
   }
 
   @WithTransaction
