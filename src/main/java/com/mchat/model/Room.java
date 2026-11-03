@@ -16,7 +16,8 @@ import org.hibernate.annotations.ColumnDefault;
 @Entity
 public class Room extends PanacheEntityBase {
   private static final Slugify SLUGIFY = Slugify.builder().build();
-  @Id public String id;
+  @Id
+  public String id;
 
   public String name;
   public String description;
@@ -74,10 +75,18 @@ public class Room extends PanacheEntityBase {
         select r.id,
                r.name,
                r.description,
+               r.type,
                r.lastSeq,
-               r.lastSeq - rm.lastSeenSeq
+               r.lastSeq - rm.lastSeenSeq,
+               peerUser.displayName,
+               peerUser.avatarUrl
         from Room r
         join RoomMember rm on rm.room = r
+        left join RoomMember PeerRm
+               on PeerRm.room = r
+              and PeerRm.user.id <> ?1
+              and r.type = 'DM'
+        left join PeerRm.user peerUser
         where rm.user.id = ?1
           and r.deleted = false
         order by r.lastSeq desc
@@ -89,9 +98,8 @@ public class Room extends PanacheEntityBase {
   public static Uni<Long> incrementAndGetSeq(String roomId) {
     return update("lastSeq = lastSeq + 1 where id = ?1", roomId)
         .chain(
-            () ->
-                find("select r.lastSeq from Room r where r.id = ?1", roomId)
-                    .project(Long.class)
-                    .firstResult());
+            () -> find("select r.lastSeq from Room r where r.id = ?1", roomId)
+                .project(Long.class)
+                .firstResult());
   }
 }
