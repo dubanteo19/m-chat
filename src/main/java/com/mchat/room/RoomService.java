@@ -46,7 +46,7 @@ public class RoomService {
   }
 
   public Uni<RoomInfo> createDm(Long userId, CreateDmRequest request) {
-    return roomDbService.createDm(userId, request.peerId())
+    return roomDbService.findOrCreateDm(userId, request.peerId())
         .map(RoomInfo::fromEntity);
   }
 

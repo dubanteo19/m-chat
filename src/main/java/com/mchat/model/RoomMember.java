@@ -16,9 +16,7 @@ import java.util.List;
 import org.hibernate.annotations.ColumnDefault;
 
 @Entity
-@Table(
-    name = "room_members",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "user_id"}))
+@Table(name = "room_members", uniqueConstraints = @UniqueConstraint(columnNames = { "room_id", "user_id" }))
 public class RoomMember extends PanacheEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "room_id", nullable = false)
@@ -38,7 +36,8 @@ public class RoomMember extends PanacheEntity {
 
   public Instant joinedAt;
 
-  public RoomMember() {}
+  public RoomMember() {
+  }
 
   public RoomMember(Room room, User user, RoomRole role) {
     this.room = room;
@@ -53,17 +52,18 @@ public class RoomMember extends PanacheEntity {
 
   public static Uni<List<RoomMember>> findMembersByRoom(String roomId) {
     return RoomMember.<RoomMember>find(
-            "from RoomMember rm join fetch rm.user where rm.room.id = ?1", roomId)
+        "from RoomMember rm join fetch rm.user where rm.room.id = ?1", roomId)
         .list();
   }
 
   public static Uni<Void> updateLastSeenSeq(String roomId, Long userId, Long seq) {
     return update(
-            "lastSeenSeq = case when lastSeenSeq < ?3 then ?3 else lastSeenSeq end where room.id ="
-                + " ?1 and user.id = ?2",
-            roomId,
-            userId,
-            seq)
+        "lastSeenSeq = case when lastSeenSeq < ?3 then ?3 else lastSeenSeq end where room.id ="
+            + " ?1 and user.id = ?2",
+        roomId,
+        userId,
+        seq)
         .replaceWithVoid();
   }
+
 }

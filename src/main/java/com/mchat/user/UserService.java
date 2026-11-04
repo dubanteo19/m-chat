@@ -55,8 +55,8 @@ public class UserService {
   }
 
   @CacheInvalidate(cacheName = CacheConstants.USER_INFO_BY_ID)
-  public Uni<User> updateProfile(@CacheKey Long userId, UpdateProfileRequest request) {
-    return userDbService.updateProfile(request, userId);
+  public Uni<UserInfo> updateProfile(@CacheKey Long userId, UpdateProfileRequest request) {
+    return userDbService.updateProfile(request, userId).map(UserInfo::fromEntity);
   }
 
   @CacheInvalidate(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)

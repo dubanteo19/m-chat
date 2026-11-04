@@ -63,7 +63,18 @@ public class RoomDbService {
   }
 
   @WithTransaction
-  public Uni<Room> createDm(Long userId, Long peerId) {
+  public Uni<Room> findOrCreateDm(Long userId, Long peerId) {
+    return Room.findDmRoomBetweenUsers(userId, peerId)
+        .chain(existingRoom -> {
+          if (existingRoom != null) {
+            return Uni.createFrom().item(existingRoom);
+          }
+          return createDmRoom(userId, peerId);
+        });
+
+  }
+
+  public Uni<Room> createDmRoom(Long userId, Long peerId) {
     String roomName = "dm_" + userId + "_" + peerId;
     var room = Room.create(roomName, null);
     room.type = RoomType.DM;

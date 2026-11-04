@@ -46,7 +46,6 @@ public class Room extends PanacheEntityBase {
             });
   }
 
-  // --- Soft Delete Method ---
   public static Uni<Boolean> softDeleteRoom(String roomId) {
     return Room.<Room>findById(roomId)
         .chain(
@@ -93,6 +92,18 @@ public class Room extends PanacheEntityBase {
         """, userId)
         .project(RoomInfo.class)
         .list();
+  }
+
+  public static Uni<Room> findDmRoomBetweenUsers(Long userId1, Long userId2) {
+    return Room.find("""
+        select r
+        from Room r
+        join RoomMember rm1 on rm1.room = r and rm1.user.id = ?1
+        join RoomMember rm2 on rm2.room = r and rm2.user.id = ?2
+        where r.type = 'DM'
+          and r.deleted = false
+        """, userId1, userId2)
+        .firstResult();
   }
 
   public static Uni<Long> incrementAndGetSeq(String roomId) {
