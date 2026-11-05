@@ -2,6 +2,7 @@ package com.mchat.auth.dto.response;
 
 import com.mchat.model.User;
 import com.mchat.model.json.TitleStyle;
+import com.mchat.storage.StorageUtil;
 
 public record CurrentUserInfo(
     Long id,
@@ -17,11 +18,13 @@ public record CurrentUserInfo(
   }
 
   public static CurrentUserInfo fromEntity(User user) {
+    String avatarUrl = StorageUtil.getUrlPrefix() + user.avatarUrl;
+
     return new CurrentUserInfo(
         user.id,
         user.username,
         user.displayName,
-        user.avatarUrl,
+        avatarUrl,
         user.title,
         user.titleStyle != null ? user.titleStyle : new TitleStyle(),
         user.allowNotify);

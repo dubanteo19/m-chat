@@ -74,12 +74,13 @@ public class MessageResource {
                                                 request.replyTo())
                                 .chain(savedMessage -> chatBroadcaster
                                                 .sendToRoom(roomId, savedMessage)
-                                                .invoke(() -> eventEmitter.fire(
-                                                                MessageCreatedEvent.toEvent(
-                                                                                savedMessage,
-                                                                                roomId)))
-                                                .replaceWith(
-                                                                Response.ok(savedMessage).build()));
+                                                .invoke(() -> {
+                                                        eventEmitter.fireAsync(
+                                                                        MessageCreatedEvent.toEvent(
+                                                                                        savedMessage,
+                                                                                        roomId));
+                                                })
+                                                .replaceWith(Response.ok(savedMessage).build()));
         }
 
         @POST

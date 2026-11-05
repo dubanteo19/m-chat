@@ -77,6 +77,7 @@ public class Room extends PanacheEntityBase {
                r.type,
                r.lastSeq,
                r.lastSeq - rm.lastSeenSeq,
+               peerUser.id,
                peerUser.displayName,
                peerUser.avatarUrl
         from Room r

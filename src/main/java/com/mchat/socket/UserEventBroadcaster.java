@@ -25,18 +25,6 @@ public class UserEventBroadcaster {
         Log.infof("Added new connection for userId: %s, total connections: %s", userId, connections.get(userId).size());
     }
 
-    public void remove(Long userId, SseEventSink sink) {
-        var sinks = connections.get(userId);
-        if (sinks != null) {
-            sinks.remove(sink);
-            Log.infof("Removing connection for userId: %s, total connections: %s", userId,
-                    connections.get(userId).size());
-            if (sinks.isEmpty()) {
-                connections.remove(userId);
-            }
-        }
-    }
-
     public void send(Long userId, UserEvent userEvent) {
         var sinks = connections.get(userId);
 
@@ -55,6 +43,7 @@ public class UserEventBroadcaster {
                 continue;
             }
             try {
+                Log.infof("Sending event %s to userId: %s", userEvent.type(), userId);
                 sink.send(event)
                         .exceptionally(ex -> {
                             removeSink(sinks, sink, userId, ex);
@@ -71,12 +60,20 @@ public class UserEventBroadcaster {
             SseEventSink sink,
             Long userId,
             Throwable ex) {
-        Log.debugf(ex, "Removing stale SSE sink for userId: %s", userId);
+        Log.infof(ex, "Removing stale SSE sink for userId: %s", userId);
         sinks.remove(sink);
-
+        if (sinks.isEmpty()) {
+            connections.remove(userId);
+            Log.infof("No more connections for userId: %s, removed from connections map", userId);
+        }
         try {
             sink.close();
         } catch (Exception ignored) {
         }
+    }
+
+    public boolean isOnline(Long userId) {
+        var sinks = connections.get(userId);
+        return sinks != null && !sinks.isEmpty();
     }
 }
