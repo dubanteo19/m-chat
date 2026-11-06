@@ -33,8 +33,6 @@ public class UpdateUnreadWorker {
 
         members.stream()
                 .filter(m -> !m.user().id().equals(event.senderId()))
-                .filter(m -> !ChatSocket.isOnlineInRoom(
-                        event.roomId(), m.user().username()))
                 .forEach(m -> broadcaster.send(
                         m.user().id(),
                         UserEvent.of(UserEventType.ROOM_UNREAD_UPDATED,
